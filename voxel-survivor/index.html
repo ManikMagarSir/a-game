@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOXEL SURVIVOR - 3D Zombie FPS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>window.VOXEL_MODS = [];</script>
+<link rel="manifest" href="manifest.json">
+</head>
+<body>
+<div id="game"></div>
+
+<!-- ===== HUD (minimal) ===== -->
+<div id="hud" class="hidden">
+    <div id="crosshair"></div>
+    <div id="hitmarker"></div>
+    <div id="vignette"></div>
+    <div id="dmgFlash"></div>
+
+    <div class="panel-tl">
+        <div class="label bar-label"><span class="lbl-ico">❤</span> HEALTH <span id="hpText">100</span></div>
+        <div class="bar hp-bar"><span id="hpGhost"></span><span id="hpFill" style="width:100%"></span></div>
+        <div class="label bar-label"><span class="lbl-ico">▲</span> LVL <span id="lvlText">1</span> &nbsp; XP</div>
+        <div class="bar xp-thin"><span id="xpFill" style="width:0%"></span></div>
+        <div class="label bar-label" id="killsRow"><span class="lbl-ico">☠</span> KILLS <span id="killsText">0</span></div>
+    </div>
+
+    <div id="bossBarWrap" style="display:none">
+        <div class="label" style="text-align:center;color:#f66;letter-spacing:3px;">⚠ BOSS ⚠</div>
+        <div id="bossBar"><span id="bossFill"></span></div>
+    </div>
+
+    <div id="beaconBarWrap" style="display:none">
+        <div class="label" style="text-align:center;color:#6cf;letter-spacing:3px;">⚠ BEACON ⚠</div>
+        <div id="beaconBar"><span id="beaconFill"></span></div>
+    </div>
+
+    <div id="timerLine" style="display:none">TIME <span id="timerText">3:00</span></div>
+
+    <div class="panel-bc">
+        <div id="weaponName">PISTOL</div>
+        <div id="ammo">∞</div>
+        <div class="cash-chip">$<span id="cashText">0</span></div>
+        <button id="shopBtn" class="hud-shop-btn">SHOP <span class="kbd">B</span></button>
+    </div>
+
+    <div id="upgPanel" class="upg-panel"></div>
+
+    <canvas id="minimap" width="160" height="160"></canvas>
+    <div id="waveBanner"></div>
+    <div id="toasts"></div>
+</div>
+
+<div id="dmgContainer"></div>
+
+<!-- ===== INTRO CUTSCENE (2D cinematic) ===== -->
+<div id="intro" class="overlay hidden">
+    <canvas id="introCanvas"></canvas>
+    <div class="intro-letterbox lb-top"></div>
+    <div class="intro-letterbox lb-bottom"></div>
+    <div class="intro-scanlines"></div>
+    <div class="intro-subwrap">
+        <div class="intro-kicker" id="introKicker">CHAPTER I — THE FALL</div>
+        <div class="intro-title" id="introChap">DAY 214</div>
+        <div class="intro-sub" id="introSub">The city fell silent weeks ago. The dead do not sleep.</div>
+        <div class="intro-progress-bar"><span class="intro-progress" id="introProgress"></span></div>
+    </div>
+    <button class="btn btn-small intro-skip" id="introSkip">SKIP INTRO (ESC)</button>
+</div>
+
+<!-- ===== LOBBY (bento grid) ===== -->
+<div id="lobby" class="overlay">
+    <div class="bento">
+        <div class="bento-card hero">
+            <h1>VOXEL SURVIVOR</h1>
+            <h2>3D Zombie FPS</h2>
+        </div>
+
+        <div class="bento-card play">
+            <button class="btn btn-big" id="playBtn">PLAY</button>
+            <div class="play-hint">Infinite ammo · No reload · One difficulty for everyone</div>
+        </div>
+
+        <div class="bento-card profile">
+            <div class="bento-title">PROFILE</div>
+            <div class="profile-bar">
+                <div class="profile-pill" id="profileTag">SURVIVOR</div>
+                <select id="profileSelect"></select>
+            </div>
+            <div class="profile-create">
+                <input id="profileName" type="text" maxlength="16" placeholder="NEW PROFILE NAME">
+                <button class="btn btn-small" id="profileAdd">CREATE</button>
+                <button class="btn btn-small btn-danger" id="profileDel">DELETE</button>
+            </div>
+        </div>
+
+        <div class="bento-card stats">
+            <div class="bento-title">CAREER</div>
+            <div class="lobby-stats">
+                <div>BEST SCORE <b id="lobbyBestScore">0</b></div>
+                <div>BEST WAVE <b id="lobbyBestWave">0</b></div>
+                <div>CREDITS <b id="lobbyCredits">0</b> 💎</div>
+            </div>
+        </div>
+
+        <div class="bento-card lb">
+            <div class="bento-title">🏆 TOP RUNS</div>
+            <div id="lbList"></div>
+        </div>
+
+        <div class="bento-card settings">
+            <div class="bento-title">SETTINGS</div>
+            <div class="settings">
+                <label>SENSITIVITY <input type="range" id="sensRange" min="0.3" max="2.5" step="0.1"><span id="sensVal">1.0</span></label>
+                <label>VOLUME <input type="range" id="volRange" min="0" max="1" step="0.05"><span id="volVal">0.6</span></label>
+                <label>GRAPHICS
+                    <select id="gfxSelect">
+                        <option value="low">LOW</option>
+                        <option value="medium">MEDIUM</option>
+                        <option value="high">HIGH</option>
+                    </select>
+                </label>
+                <label>MODE
+                    <select id="modeSelect">
+                        <option value="endless">ENDLESS HORDE</option>
+                        <option value="time">TIME ATTACK</option>
+                        <option value="bossrush">BOSS RUSH</option>
+                        <option value="defense">WAVE DEFENSE</option>
+                        <option value="sandbox">SANDBOX</option>
+                    </select>
+                </label>
+            </div>
+        </div>
+
+        <div class="bento-card keys">
+            <div class="bento-title">CONTROLS</div>
+            <div class="keys keys-grid" id="keysFull">
+                <span><b>WASD</b> Move</span>
+                <span><b>MOUSE</b> Look</span>
+                <span><b>L-CLICK</b> Shoot</span>
+                <span><b>R-CLICK</b> Aim</span>
+                <span><b>1-8</b> Weapons</span>
+                <span><b>WHEEL</b> Switch</span>
+                <span><b>F</b> Melee</span>
+                <span><b>G</b> Grenade</span>
+                <span><b>B</b> Shop</span>
+                <span><b>SHIFT</b> Sprint</span>
+                <span><b>ESC</b> Pause</span>
+            </div>
+        </div>
+
+        <div class="bento-card extras">
+            <div class="bento-title">EXTRAS</div>
+            <button class="btn btn-small" id="careerOpen">CAREER SHOP</button>
+            <div class="btn-row">
+                <button class="btn btn-small" id="mapExport">EXPORT MAP</button>
+                <button class="btn btn-small" id="mapImport">IMPORT MAP</button>
+                <input type="file" id="mapFile" accept=".json,application/json" style="display:none">
+            </div>
+        </div>
+    </div>
+
+    <div id="careerShop" class="modal-wrap hidden">
+        <div class="modal">
+            <h2>CAREER SHOP <span class="credits">💎 <span id="careerCredits2">0</span></span></h2>
+            <div id="careerList" class="shop-list"></div>
+            <button class="btn btn-small" id="careerClose">CLOSE</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== FIRST BOOT: CREATE PROFILE ===== -->
+<div id="profileModal" class="modal-wrap hidden">
+    <div class="modal">
+        <h1>WELCOME, SURVIVOR</h1>
+        <h2>Create your profile to begin</h2>
+        <input id="profileNameBoot" type="text" maxlength="16" placeholder="ENTER YOUR NAME">
+        <button class="btn" id="profileCreateBoot">START</button>
+        <div class="keys">Your profile saves your best score, career credits, and upgrades.</div>
+    </div>
+</div>
+
+<!-- ===== PAUSE (popup) ===== -->
+<div id="pause" class="modal-wrap hidden">
+    <div class="modal">
+        <h1>PAUSED</h1>
+        <div class="bento bento-2">
+            <button class="bento-card act" id="resumeBtn">RESUME</button>
+            <button class="bento-card act" id="pauseShopBtn">OPEN SHOP</button>
+        </div>
+        <div class="keys">Press <b>ESC</b> to resume. Press <b>B</b> or click the button to open the field shop.</div>
+    </div>
+</div>
+
+<!-- ===== LEVEL UP (popup) ===== -->
+<div id="levelUp" class="modal-wrap hidden">
+    <div class="modal">
+        <h1 class="lu-title">LEVEL UP!</h1>
+        <h2 id="luSub">Choose a perk</h2>
+        <div class="cards" id="cards"></div>
+    </div>
+</div>
+
+<!-- ===== SHOP (in-run popup) ===== -->
+<div id="shop" class="modal-wrap hidden">
+    <div class="modal modal-wide">
+        <div class="modal-head">
+            <h1 class="shop-title">FIELD SHOP</h1>
+            <div class="shop-cash">CASH $<span id="shopCash">0</span></div>
+        </div>
+        <div id="shopList" class="shop-list"></div>
+        <button class="btn btn-small" id="shopClose">CLOSE (B)</button>
+    </div>
+</div>
+
+<!-- ===== SANDBOX (spawn menu popup) ===== -->
+<div id="sandbox" class="modal-wrap hidden">
+    <div class="modal">
+        <h1>SANDBOX</h1>
+        <h2>Click a zombie to spawn it</h2>
+        <div class="sandbox-grid">
+            <button class="btn btn-small" id="spawnnormal">ZOMBIE</button>
+            <button class="btn btn-small" id="spawnrunner">RUNNER</button>
+            <button class="btn btn-small" id="spawnbrute">BRUTE</button>
+            <button class="btn btn-small" id="spawnspitter">SPITTER</button>
+            <button class="btn btn-small" id="spawnexploder">EXPLODER</button>
+            <button class="btn btn-small" id="spawnscreamer">SCREAMER</button>
+            <button class="btn btn-small" id="spawnshield">SHIELD</button>
+            <button class="btn btn-small" id="spawnboss">BOSS</button>
+        </div>
+        <button class="btn btn-small" id="sandboxClose">CLOSE (T)</button>
+    </div>
+</div>
+
+<!-- ===== GAME OVER (bento stats) ===== -->
+<div id="gameOver" class="overlay hidden">
+    <h1 class="dead" id="goTitle">GAME OVER</h1>
+    <div class="bento bento-go">
+        <div class="bento-card go-stat go-score">
+            <div class="go-k">SCORE</div>
+            <div class="go-v" id="goScore">0</div>
+        </div>
+        <div class="bento-card go-stat"><div class="go-k">WAVES</div><div class="go-v" id="goWave">0</div></div>
+        <div class="bento-card go-stat"><div class="go-k">KILLS</div><div class="go-v" id="goKills">0</div></div>
+        <div class="bento-card go-stat"><div class="go-k">LEVEL</div><div class="go-v" id="goLevel">0</div></div>
+        <div class="bento-card go-stat"><div class="go-k">CREDITS</div><div class="go-v" id="goCredits">0</div></div>
+        <div class="bento-card go-stat go-best"><div class="go-k">BEST SCORE</div><div class="go-v" id="goBest">0</div></div>
+        <div class="bento-card go-stat"><div class="go-k">ACCURACY</div><div class="go-v" id="goAcc">-</div></div>
+        <div class="bento-card go-stat"><div class="go-k">HEADSHOTS</div><div class="go-v" id="goHead">0</div></div>
+    </div>
+    <div class="btn-row">
+        <button class="btn" id="restartBtn">PLAY AGAIN</button>
+        <button class="btn btn-small" id="menuBtn">MAIN MENU</button>
+    </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+<script>
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+    addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
