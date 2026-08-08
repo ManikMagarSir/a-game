@@ -1,12 +1,32 @@
+export const SCOPE_PROFILES = {
+    reflex: { id:'reflex', name:'REFLEX DOT', model:'reflex', fov:55, overlay:true },
+    holo:   { id:'holo', name:'HOLOGRAPHIC', model:'holo', fov:50, overlay:true },
+    bead:   { id:'bead', name:'FRONT BEAD', model:'bead', fov:62, overlay:true },
+    acog:   { id:'acog', name:'ACOG 4×', model:'acog', fov:38, overlay:true },
+    lpvo:   { id:'lpvo', name:'LPVO 6×', model:'lpvo', fov:32, overlay:true },
+    mil:    { id:'mil', name:'MIL-DOT 12×', model:'mil', fov:25, overlay:true },
+    cross:  { id:'cross', name:'CROSSHAIR', model:'cross', fov:48, overlay:true },
+    none:   { id:'none', name:'IRON / OPEN', model:'none', fov:55, overlay:false },
+};
+
+export function scopeForWeapon(id){
+    return SCOPE_PROFILES[WEAPONS[id]?.scope || 'none'] || SCOPE_PROFILES.none;
+}
+
+export function aimFov(id, G){
+    const profile = scopeForWeapon(id);
+    return Math.max(22, profile.fov - (G?.attach?.scope && profile.overlay ? 5 : 0));
+}
+
 export const WEAPONS = [
-    { id:0, name:'PISTOL',  auto:false, dmg:34, cd:0.22,  pellets:1, spread:0.012, mag:12, reload:1.1, range:200, recoil:0.020, sfx:'pistol' },
-    { id:1, name:'SMG',     auto:true,  dmg:16, cd:0.060, pellets:1, spread:0.030, mag:32, reload:1.4, range:170, recoil:0.012, sfx:'smg' },
-    { id:2, name:'SHOTGUN', auto:false, dmg:11, cd:0.72,  pellets:9, spread:0.11,  mag:7,  reload:1.9, range:85,  recoil:0.055, sfx:'shotgun' },
-    { id:3, name:'RIFLE',   auto:true,  dmg:42, cd:0.11,  pellets:1, spread:0.014, mag:25, reload:1.6, range:260, recoil:0.030, sfx:'rifle' },
-    { id:4, name:'LMG',     auto:true,  dmg:22, cd:0.075, pellets:1, spread:0.035, mag:80, reload:2.4, range:220, recoil:0.018, sfx:'smg' },
-    { id:5, name:'SNIPER',  auto:false, dmg:150, cd:1.1,  pellets:1, spread:0.001, mag:6,  reload:2.2, range:400, recoil:0.090, sfx:'rifle' },
-    { id:6, name:'CROSSBOW',auto:false, dmg:90, cd:0.9,   pellets:1, spread:0.003, mag:1,  reload:1.8, range:300, recoil:0.020, sfx:'pistol' },
-    { id:7, name:'FLAMER',  auto:true,  dmg:8,  cd:0.05,  pellets:1, spread:0.05,  mag:100,reload:2.0, range:40,  recoil:0.008, sfx:'flamer' },
+    { id:0, name:'PISTOL',  scope:'reflex', auto:false, dmg:34, cd:0.22,  pellets:1, spread:0.012, mag:12, reload:1.1, range:200, recoil:0.020, sfx:'pistol' },
+    { id:1, name:'SMG',     scope:'holo', auto:true,  dmg:16, cd:0.060, pellets:1, spread:0.030, mag:32, reload:1.4, range:170, recoil:0.012, sfx:'smg' },
+    { id:2, name:'SHOTGUN', scope:'bead', auto:false, dmg:11, cd:0.72,  pellets:9, spread:0.11,  mag:7,  reload:1.9, range:85,  recoil:0.055, sfx:'shotgun' },
+    { id:3, name:'RIFLE',   scope:'acog', auto:true,  dmg:42, cd:0.11,  pellets:1, spread:0.014, mag:25, reload:1.6, range:260, recoil:0.030, sfx:'rifle' },
+    { id:4, name:'LMG',     scope:'holo', auto:true,  dmg:22, cd:0.075, pellets:1, spread:0.035, mag:80, reload:2.4, range:220, recoil:0.018, sfx:'smg' },
+    { id:5, name:'SNIPER',  scope:'mil', auto:false, dmg:150, cd:1.1,  pellets:1, spread:0.001, mag:6,  reload:2.2, range:400, recoil:0.090, sfx:'rifle' },
+    { id:6, name:'CROSSBOW',scope:'cross', auto:false, dmg:90, cd:0.9,   pellets:1, spread:0.003, mag:1,  reload:1.8, range:300, recoil:0.020, sfx:'pistol' },
+    { id:7, name:'FLAMER',  scope:'none', auto:true,  dmg:8,  cd:0.05,  pellets:1, spread:0.05,  mag:100,reload:2.0, range:40,  recoil:0.008, sfx:'flamer' },
 ];
 
 export function effMag(w, G){ return w.mag + (G ? G.mult.mag + (G.attach ? G.attach.mag : 0) : 0); }
@@ -65,10 +85,76 @@ export const CAREER_UPGRADES = [
     { id:'rifle',  name:'Veteran',   ico:'🎖️', desc:'Start with Rifle unlocked', max:1, cost:()=>600,    effect:G=>{ G.ownedWeapons[3]=true; } },
 ];
 
+export const EXTRACTION = {
+    waves: 6,
+    title: 'DAY RUN',
+    desc: 'Clear three town districts, reach the flare, and get out before the streets close in.',
+};
+
+export const ARENAS = [
+    {
+        id:'downtown', name:'MAPLE CROSSING', subtitle:'A walkable main street wrapped around the town square.',
+        groundA:0x6f8d58, groundB:0x86a567, fogColor:0xb9d6d2, neon:0xd94c42, spawnRadius:42,
+        beacon:{x:-31,z:-30}, evac:{x:45,z:42}, objective:'Secure the town hall square.',
+        roads:[{x:0,z:0,w:16,d:112},{x:0,z:-24,w:96,d:12},{x:-28,z:20,w:52,d:9},{x:28,z:20,w:52,d:9}],
+        buildings:[
+            {x:-37,z:-40,w:18,d:20,h:5,c:0xb76f54,roof:0x7d463d,door:'front',sign:0xd94c42,window:'#f4d58b',awning:0xe6a34f},
+            {x:37,z:-40,w:18,d:22,h:6,c:0x7e9caa,roof:0x5a6d70,door:'side',sign:0x4b7d91,window:'#c4e0e5',chimney:true},
+            {x:-37,z:38,w:20,d:18,h:5,c:0xd0a46a,roof:0x8d6949,door:'front',sign:0x4f7f55,window:'#f7e1a3',awning:0x547d59},
+            {x:37,z:38,w:18,d:20,h:5,c:0xbfc6b0,roof:0x69745b,door:'front',sign:0xd36a3d,window:'#e8f1da',chimney:true},
+        ],
+        props:[
+            {kind:'civic',x:0,z:-18},{kind:'fountain',x:0,z:2},{kind:'diner',x:0,z:-43},{kind:'watertower',x:30,z:25},
+            {kind:'car',x:-13,z:-25,r:0.1},{kind:'car',x:15,z:24,r:3.1},{kind:'bench',x:-8,z:8,r:0},{kind:'bench',x:8,z:8,r:0},
+            {kind:'lamp',x:-21,z:-20},{kind:'lamp',x:21,z:-20},{kind:'lamp',x:-21,z:20},{kind:'lamp',x:21,z:20},
+            {kind:'tree',x:-14,z:14,r:.2,color:0x477a42},{kind:'tree',x:14,z:14,r:1.4,color:0x5b8745},
+            {kind:'barrier',x:-24,z:-4,r:1.57},{kind:'dumpster',x:24,z:-31,r:.2},
+        ],
+    },
+    {
+        id:'residential', name:'CEDAR GROVE', subtitle:'Porches, back lanes, and a school behind the trees.',
+        groundA:0x76945c, groundB:0x8eaa70, fogColor:0xc2dcda, neon:0xc85c43, spawnRadius:40,
+        beacon:{x:32,z:-30}, evac:{x:-45,z:40}, objective:'Find the emergency radio at Cedar School.',
+        roads:[{x:0,z:0,w:13,d:112},{x:-28,z:0,w:55,d:10},{x:28,z:0,w:55,d:10},{x:0,z:28,w:78,d:6}],
+        buildings:[
+            {x:-35,z:-35,w:16,d:15,h:4,c:0xaebd9a,roof:0x697957,door:'front',sign:0x54704d,window:'#f6dfa1',awning:0xd49c68},
+            {x:-12,z:-35,w:14,d:16,h:4,c:0xd2a47d,roof:0x875449,door:'front',sign:0xc85c43,window:'#f6d391'},
+            {x:35,z:-35,w:18,d:18,h:5,c:0x9eafa9,roof:0x64777a,door:'side',sign:0x547b8d,window:'#d5edf0',chimney:true},
+            {x:-35,z:35,w:18,d:17,h:4,c:0xc7b17c,roof:0x80734f,door:'front',sign:0x6b7f4d,window:'#f8e3a6'},
+            {x:35,z:35,w:20,d:17,h:4,c:0xd8b5a0,roof:0x8e5f52,door:'front',sign:0xb04e3c,window:'#f5d4a0',awning:0xc85c43},
+        ],
+        props:[
+            {kind:'church',x:0,z:-35},{kind:'school',x:0,z:37,w:25,d:9,h:4},{kind:'watertower',x:-29,z:22},
+            {kind:'tree',x:-22,z:-18,r:.2,color:0x4d8645},{kind:'tree',x:22,z:-18,r:1.4,color:0x5a8b48},{kind:'tree',x:-20,z:22,r:.5,color:0x497a43},{kind:'tree',x:20,z:22,r:2,color:0x6b964d},
+            {kind:'car',x:-6,z:-18,r:1.5},{kind:'car',x:13,z:18,r:-1.5},{kind:'bench',x:12,z:0,r:1.57},{kind:'fence',x:0,z:23,w:28,r:0},
+            {kind:'lamp',x:-20,z:-12},{kind:'lamp',x:20,z:-12},{kind:'lamp',x:-20,z:14},{kind:'lamp',x:20,z:14},
+            {kind:'barrier',x:-25,z:1,r:0},{kind:'dumpster',x:16,z:-27,r:1.2},
+        ],
+    },
+    {
+        id:'outskirts', name:'RIVER ROAD', subtitle:'The town thins into orchards, a creek, and the old mill.',
+        groundA:0x7e9d61, groundB:0x9cb778, fogColor:0xc7ded9, neon:0xd86b43, spawnRadius:43,
+        water:{x:0,z:48,w:112,d:13},
+        beacon:{x:-31,z:31}, evac:{x:0,z:-48}, objective:'Reach the old mill and light the flare.',
+        roads:[{x:0,z:0,w:15,d:112},{x:-28,z:0,w:54,d:11},{x:28,z:0,w:54,d:11},{x:0,z:-27,w:84,d:8}],
+        buildings:[
+            {x:-35,z:-35,w:20,d:18,h:5,c:0xb48762,roof:0x765042,door:'front',sign:0xd86b43,window:'#f2cf91',awning:0xb6573d},
+            {x:35,z:-35,w:18,d:20,h:5,c:0x8aa37e,roof:0x5e744f,door:'side',sign:0x567b52,window:'#f2e4ae',chimney:true},
+            {x:-35,z:35,w:20,d:19,h:5,c:0x9b7e60,roof:0x675541,door:'front',sign:0x9e4c3c,window:'#e9c78c'},
+            {x:35,z:35,w:18,d:18,h:4,c:0xc0a06c,roof:0x806044,door:'front',sign:0x557554,window:'#f5dca4',awning:0x6c874d},
+        ],
+        props:[
+            {kind:'diner',x:0,z:-40},{kind:'school',x:0,z:28,w:22,d:8,h:4},{kind:'watertower',x:27,z:26},{kind:'mill',x:-28,z:27},
+            {kind:'tree',x:-18,z:-14,r:.6,color:0x4d8645},{kind:'tree',x:18,z:-14,r:1.7,color:0x5b8b48},{kind:'tree',x:-17,z:16,r:2.5,color:0x6e984d},{kind:'tree',x:17,z:18,r:.3,color:0x4a7d43},
+            {kind:'car',x:-15,z:20,r:0},{kind:'car',x:15,z:-20,r:3.1},{kind:'fence',x:0,z:40,w:35,r:0},{kind:'barrier',x:0,z:-5,r:1.57},
+            {kind:'lamp',x:-22,z:-17},{kind:'lamp',x:22,z:-17},{kind:'lamp',x:-22,z:18},{kind:'lamp',x:22,z:18},{kind:'bench',x:20,z:-4,r:1.57},
+        ],
+    },
+];
+
 export const MODES = {
-    endless:  { ico:'♾️', name:'ENDLESS HORDE',  desc:'Survive escalating waves as long as you can.' },
-    time:     { ico:'⏱️', name:'TIME ATTACK',    desc:'Survive 3 minutes. Score big before time runs out.' },
-    bossrush: { ico:'👹', name:'BOSS RUSH',      desc:'A boss every wave. How many can you down?' },
-    defense:  { ico:'🛡️', name:'WAVE DEFENSE',   desc:'Protect the beacon from the horde.' },
-    sandbox:  { ico:'🧪', name:'SANDBOX',        desc:'God mode + spawn menu (T). No challenge, all chaos.' },
+    extraction: { ico:'✦', name:'DAY RUN', desc:'Clear three town districts and escape through the flare.' },
+    survival:   { ico:'☠', name:'LAST STAND', desc:'Classic escalating waves across the Blackwater complex.' },
+    hunt:       { ico:'⚔', name:'WARDEN HUNT', desc:'Track down the Warden through the industrial complex.' },
+    sandbox:    { ico:'🧪', name:'SANDBOX', desc:'Free play with god mode and the spawn menu.' },
 };

@@ -20,6 +20,22 @@ function part(sx, sy, sz, mat, x, y, z, rx = 0, rz = 0){
     return m;
 }
 
+function optic(type, mat = mDark){
+    if(type === 'none' || type === 'bead') return null;
+    const g = new THREE.Group();
+    if(type === 'reflex'){
+        g.add(part(.16,.06,.22,mat,0,.05,0), part(.025,.14,.04,mBody,0,.14,0));
+    } else if(type === 'holo'){
+        g.add(part(.2,.13,.24,mat,0,.08,0), part(.16,.08,.04,mBright,0,.15,0));
+    } else if(type === 'acog' || type === 'lpvo' || type === 'mil'){
+        const length = type === 'mil' ? .42 : .3;
+        g.add(part(.14,.14,length,mat,0,.12,0), part(.2,.05,.05,mBright,0,.12,-length/2), part(.2,.05,.05,mBright,0,.12,length/2));
+    } else if(type === 'cross'){
+        g.add(part(.05,.05,.35,mBright,0,.11,0), part(.35,.05,.05,mBright,0,.11,0));
+    }
+    return g;
+}
+
 function addMuzzle(g, x, y, z){
     const muzzle = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.55),
         new THREE.MeshBasicMaterial({ map: glow, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, color: 0xffffff }));
@@ -31,6 +47,7 @@ function addMuzzle(g, x, y, z){
 
 function pistol(){
     const g = new THREE.Group();
+    const sight = optic('reflex'); if(sight) sight.position.set(0,.15,-.18); if(sight) g.add(sight);
     g.add(
         part(0.13, 0.08, 0.24, mDark, 0, 0, -0.1),
         part(0.11, 0.06, 0.26, mBody, 0, 0.07, -0.12),
@@ -44,6 +61,7 @@ function pistol(){
 
 function smg(){
     const g = new THREE.Group();
+    const sight = optic('holo'); if(sight) sight.position.set(0,.13,-.34); if(sight) g.add(sight);
     g.add(
         part(0.16, 0.12, 0.46, mBody, 0, 0, -0.24),
         part(0.08, 0.08, 0.26, mDark, 0, 0.02, -0.6),
@@ -72,6 +90,7 @@ function shotgun(){
 
 function rifle(){
     const g = new THREE.Group();
+    const sight = optic('acog'); if(sight) sight.position.set(0,.17,-.2); if(sight) g.add(sight);
     g.add(
         part(0.17, 0.14, 0.4, mBody, 0, 0, -0.18),
         part(0.06, 0.06, 0.36, mDark, 0, 0.03, -0.56),
@@ -88,6 +107,7 @@ function rifle(){
 
 function lmg(){
     const g = new THREE.Group();
+    const sight = optic('holo'); if(sight) sight.position.set(0,.15,-.28); if(sight) g.add(sight);
     g.add(
         part(0.19, 0.16, 0.48, mBody, 0, 0, -0.24),
         part(0.09, 0.09, 0.5, mDark, 0, 0.04, -0.62),
@@ -103,6 +123,7 @@ function lmg(){
 
 function sniper(){
     const g = new THREE.Group();
+    const sight = optic('mil', mBody); if(sight) sight.position.set(0,.28,-.36); if(sight) g.add(sight);
     g.add(
         part(0.14, 0.12, 0.44, mBody, 0, 0, -0.18),
         part(0.05, 0.05, 0.68, mDark, 0, 0.02, -0.68),
@@ -120,6 +141,7 @@ function sniper(){
 
 function crossbow(){
     const g = new THREE.Group();
+    const sight = optic('cross', mBody); if(sight) sight.position.set(0,.17,-.3); if(sight) g.add(sight);
     g.add(
         part(0.12, 0.13, 0.32, mWood, 0, 0, -0.16),
         part(0.42, 0.06, 0.06, mDark, 0, 0.02, -0.44),

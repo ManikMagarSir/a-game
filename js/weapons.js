@@ -5,6 +5,7 @@ import { audio } from './audio.js';
 import { buildViewModel } from './models/index.js';
 import { damageZombie, zombies as zombieList } from './zombies.js';
 import { updateHUD, toast, setAim } from './ui.js';
+import { aimFov } from './config.js';
 
 let vm = null, vmMuzzle = null, vmKick = 0, muzzleTimer = 0;
 let switchCd = 0, switchAnim = 1, meleeT = 0;
@@ -29,6 +30,7 @@ function applySwitch(i){
     switchCd = SWITCH_CD;
     switchAnim = 0;
     rebuildViewModel();
+    if(G.aiming){ camera.fov = aimFov(G.curWeapon, G); camera.updateProjectionMatrix(); }
     setAim(G.aiming);
     updateHUD();
 }

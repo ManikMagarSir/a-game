@@ -59,26 +59,6 @@ function drawSkyline(ctx, layer, W, baseY, now) {
     }
 }
 
-function drawMoon(ctx, m, W, baseY, now) {
-    const x = m.fx * W, y = m.fy * baseY, r = m.r * baseY;
-    const g = ctx.createRadialGradient(x, y, r * 0.3, x, y, r * 3.4);
-    g.addColorStop(0, m.color);
-    g.addColorStop(0.2, m.color);
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(x, y, r * 3.4, 0, TAU); ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = m.color;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
-    const cr = r * 0.22;
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.beginPath(); ctx.arc(x - r * 0.28, y - r * 0.2, cr, 0, TAU);
-    ctx.arc(x + r * 0.2, y + r * 0.24, cr * 0.8, 0, TAU);
-    ctx.arc(x + r * 0.34, y - r * 0.3, cr * 0.55, 0, TAU);
-    ctx.fill();
-}
-
 function drawGround(ctx, W, baseY, bottomY, color) {
     ctx.fillStyle = color;
     ctx.fillRect(0, baseY, W, bottomY - baseY);
@@ -204,35 +184,31 @@ function genEmbers(n) {
 
 const S = (() => {
     const rnd = mulberry32(42);
-    const stars = [];
-    for (let i = 0; i < 130; i++) stars.push({ fx: rnd(), fy: rnd() * 0.9, r: rnd() * 1.1 + 0.4, tw: rnd() * TAU });
     const ch1 = {
         layers: [
-            { ...genSkyline(11, 14, 0.05, 0.11, 0.16, 0.38, 0.02), speed: 0.02, color: '#0a1220' },
-            { ...genSkyline(22, 10, 0.07, 0.14, 0.28, 0.5, 0.04), speed: 0.035, color: '#080d18' },
-            { ...genSkyline(33, 7, 0.1, 0.18, 0.45, 0.72, 0.06), speed: 0.05, color: '#050910' },
+            { ...genSkyline(11, 14, 0.05, 0.11, 0.16, 0.38, 0.02), speed: 0.02, color: '#7893a1' },
+            { ...genSkyline(22, 10, 0.07, 0.14, 0.28, 0.5, 0.04), speed: 0.035, color: '#5f7885' },
+            { ...genSkyline(33, 7, 0.1, 0.18, 0.45, 0.72, 0.06), speed: 0.05, color: '#405762' },
         ],
-        moon: { fx: 0.72, fy: 0.3, r: 0.075, color: '#e8f2ff' },
         fog: [
             { fx: 0.2, fy: 0.72, fh: 0.16, color: 'rgba(90,140,190,0.07)' },
             { fx: 0.7, fy: 0.8, fh: 0.2, color: 'rgba(60,110,170,0.06)' },
             { fx: 0.45, fy: 0.9, fh: 0.18, color: 'rgba(40,80,140,0.09)' },
         ],
-        ground: '#04060c',
+        ground: '#8b9d86',
     };
     const ch2 = {
         layers: [
-            { ...genSkyline(111, 14, 0.05, 0.11, 0.16, 0.38, 0.02), speed: 0.03, color: '#17090c' },
-            { ...genSkyline(222, 10, 0.07, 0.14, 0.28, 0.5, 0.04), speed: 0.045, color: '#110609' },
-            { ...genSkyline(333, 7, 0.1, 0.18, 0.45, 0.72, 0.06), speed: 0.06, color: '#0a0407' },
+            { ...genSkyline(111, 14, 0.05, 0.11, 0.16, 0.38, 0.02), speed: 0.03, color: '#9a8378' },
+            { ...genSkyline(222, 10, 0.07, 0.14, 0.28, 0.5, 0.04), speed: 0.045, color: '#765f58' },
+            { ...genSkyline(333, 7, 0.1, 0.18, 0.45, 0.72, 0.06), speed: 0.06, color: '#554746' },
         ],
-        moon: { fx: 0.7, fy: 0.3, r: 0.095, color: '#ff6a52' },
         fog: [
             { fx: 0.3, fy: 0.72, fh: 0.16, color: 'rgba(120,40,40,0.08)' },
             { fx: 0.6, fy: 0.84, fh: 0.2, color: 'rgba(90,30,30,0.1)' },
             { fx: 0.4, fy: 0.93, fh: 0.16, color: 'rgba(70,20,20,0.12)' },
         ],
-        ground: '#070309',
+        ground: '#a28f7c',
         fires: [
             { fx: 0.14, ph: 0.3 }, { fx: 0.31, ph: 1.7 }, { fx: 0.63, ph: 3.1 }, { fx: 0.88, ph: 4.6 }, { fx: 0.5, ph: 5.8 },
         ],
@@ -243,16 +219,15 @@ const S = (() => {
     };
     const ch3 = {
         layers: [
-            { ...genSkyline(444, 12, 0.06, 0.12, 0.14, 0.32, 0.02), speed: 0.015, color: '#06080e' },
-            { ...genSkyline(555, 8, 0.08, 0.15, 0.22, 0.44, 0.04), speed: 0.03, color: '#04060b' },
+            { ...genSkyline(444, 12, 0.06, 0.12, 0.14, 0.32, 0.02), speed: 0.015, color: '#a7b7b3' },
+            { ...genSkyline(555, 8, 0.08, 0.15, 0.22, 0.44, 0.04), speed: 0.03, color: '#718783' },
         ],
-        moon: { fx: 0.82, fy: 0.26, r: 0.06, color: '#c9d6ee' },
         fog: [
             { fx: 0.5, fy: 0.86, fh: 0.22, color: 'rgba(70,110,170,0.08)' },
             { fx: 0.25, fy: 0.92, fh: 0.18, color: 'rgba(50,90,150,0.1)' },
         ],
-        ground: '#03050a',
-        rain: genRain(140),
+        ground: '#8da28a',
+        rain: genRain(70),
         horde: genHorde(rnd, 30, 0.02, 0.7, 0.05, 0.12, 0.9, 0.9),
         fence: [],
     };
@@ -263,14 +238,14 @@ const S = (() => {
         horde: genHorde(rnd, 34, 0.02, 0.9, 0.025, 0.05, 0.5, 0.2),
         embers: genEmbers(64),
     };
-    return { stars, ch1, ch2, ch3, ch4 };
+    return { ch1, ch2, ch3, ch4 };
 })();
 
 const CH = [
     {
         key: 'DAY 214',
         kicker: 'CHAPTER I — THE FALL',
-        sub: 'The city fell silent weeks ago.',
+        sub: 'The quarantine line is gone. Three sectors remain.',
         dur: 1.6,
         draw(t, ctx, W, H, baseY, bottomY, now, dt) {
             const c = S.ch1;
@@ -300,14 +275,14 @@ const CH = [
                     const pr = (i + t * 4 + now * 0.15) % 5;
                     const r = (8 + pr * 26) * (H / 720);
                     const alpha = Math.max(0, 0.16 - pr * 0.03) * 0.7;
-                    ctx.fillStyle = 'rgba(40,30,34,1)';
+                    ctx.fillStyle = 'rgba(92, 80, 76, 1)';
                     ctx.globalAlpha = alpha;
                     ctx.beginPath(); ctx.arc(bx + pr * 6, by - pr * 34, r, 0, TAU); ctx.fill();
                 }
             }
             ctx.globalAlpha = 1;
             drawGround(ctx, W, baseY, bottomY, c.ground);
-            drawHorde(ctx, c.horde, t, now, W, H, baseY, bottomY, '#0b050a', 0.2);
+            drawHorde(ctx, c.horde, t, now, W, H, baseY, bottomY, '#3d4038', 0.2);
             for (const f of c.fires) {
                 const fx = f.fx * W, fy = bottomY - H * 0.01;
                 const fl = 0.55 + 0.45 * Math.sin(now * 6 + f.ph);
@@ -328,14 +303,14 @@ const CH = [
     {
         key: 'THE BARRICADE',
         kicker: 'CHAPTER III — THE BARRICADE',
-        sub: 'The beacon keeps the dark back.',
+        sub: 'The barricades hold the town square.',
         dur: 1.7,
         draw(t, ctx, W, H, baseY, bottomY, now, dt) {
             const c = S.ch3;
             drawSkyline(ctx, c.layers[0], W, baseY, now);
             drawSkyline(ctx, c.layers[1], W, baseY, now);
             drawGround(ctx, W, baseY, bottomY, c.ground);
-            drawHorde(ctx, c.horde, t, now, W, H, baseY, bottomY, '#0d0f16', 0.05);
+            drawHorde(ctx, c.horde, t, now, W, H, baseY, bottomY, '#263b38', 0.05);
             drawFog(ctx, W, H, baseY, now, c.fog);
             const tx = 0.82 * W, ty = baseY - 0.34 * H;
             const ang = -0.5 + Math.sin(now * 0.6 + 1.3) * 0.45;
@@ -354,7 +329,7 @@ const CH = [
             ctx.closePath();
             ctx.fill();
             ctx.restore();
-            ctx.fillStyle = '#0a0d13';
+            ctx.fillStyle = '#385149';
             ctx.fillRect(tx - 5, ty, 10, baseY + H * 0.15 - ty);
             const hg = ctx.createRadialGradient(tx, ty, 0, tx, ty, H * 0.1);
             hg.addColorStop(0, 'rgba(220,245,255,0.95)');
@@ -365,7 +340,7 @@ const CH = [
             for (const p of c.fence) {
                 const fx = p.fx * W, h = p.h * H;
                 const fx2 = (p.fx + 0.055) * W;
-                ctx.strokeStyle = '#0e1219';
+                ctx.strokeStyle = '#405b52';
                 ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.moveTo(fx, bottomY); ctx.lineTo(fx, bottomY - h); ctx.stroke();
@@ -374,7 +349,7 @@ const CH = [
                 ctx.moveTo(fx, bottomY - h * 0.55); ctx.lineTo(fx2, bottomY - p.h2 * H);
                 ctx.moveTo(fx, bottomY - h); ctx.lineTo(fx2, bottomY - p.h2 * H);
                 ctx.stroke();
-                ctx.strokeStyle = '#1b2230';
+                ctx.strokeStyle = '#587166';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.moveTo(fx, bottomY - h);
@@ -388,7 +363,7 @@ const CH = [
             for (const d of c.rain) {
                 const x = (d.x * W + now * 40 * d.sp) % (W + 30) - 15;
                 const y = (d.y * H + now * 420 * d.sp) % (H + 40) - 20;
-                ctx.strokeStyle = 'rgba(150,180,210,0.22)';
+                ctx.strokeStyle = 'rgba(255,255,225,0.28)';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.moveTo(x, y);
@@ -401,22 +376,22 @@ const CH = [
     {
         key: 'LAST SURVIVOR',
         kicker: 'LAST SURVIVOR STANDING',
-        sub: 'Hold the line. Survive the night.',
+        sub: 'Hold the line. Survive the day.',
         dur: 1.9,
         draw(t, ctx, W, H, baseY, bottomY, now, dt) {
             const c = S.ch4;
             const vg = ctx.createLinearGradient(0, 0, 0, H);
-            vg.addColorStop(0, '#050409');
-            vg.addColorStop(0.5, '#09060d');
-            vg.addColorStop(1, '#0d0808');
+            vg.addColorStop(0, '#6da9cf');
+            vg.addColorStop(0.5, '#c9e3e6');
+            vg.addColorStop(1, '#d6c99c');
             ctx.fillStyle = vg;
             ctx.fillRect(0, 0, W, H);
             const gr = ctx.createRadialGradient(W * 1.05, baseY * 0.9, 0, W * 1.05, baseY * 0.9, H * 0.8);
-            gr.addColorStop(0, 'rgba(255,80,50,0.32)');
+            gr.addColorStop(0, 'rgba(255,190,95,0.28)');
             gr.addColorStop(1, 'rgba(0,0,0,0)');
             ctx.fillStyle = gr;
             ctx.fillRect(0, 0, W, H);
-            drawHorde(ctx, c.horde, t, now, W, H, baseY, bottomY, '#0a0406', 0);
+            drawHorde(ctx, c.horde, t, now, W, H, baseY, bottomY, '#33433c', 0);
             for (const e of c.embers) {
                 const y = (H - (e.y * H + now * e.v * 60)) % H;
                 const x = e.x * W + Math.sin(now * 2 + e.ph) * 14;
@@ -434,7 +409,7 @@ const CH = [
             glow.addColorStop(1, 'rgba(0,0,0,0)');
             ctx.fillStyle = glow;
             ctx.beginPath(); ctx.arc(sxp + sp * 0.4, syp - sp * 0.5, sp * 0.5, 0, TAU); ctx.fill();
-            drawSurvivor(ctx, sxp, syp, sp, now * 1.1, '#10141c');
+            drawSurvivor(ctx, sxp, syp, sp, now * 1.1, '#32443d');
             const a = ss(clamp((t - 0.28) / 0.2, 0, 1));
             const size = Math.min(W, H) * 0.088;
             const pulse = 0.6 + 0.4 * Math.sin(now * 4);
@@ -557,17 +532,13 @@ export function playIntro(onDone) {
         const t = clamp(elapsed / chap.dur, 0, 1);
         elapsed += dt;
 
-        ctx.fillStyle = '#020408';
+        const daySky = ctx.createLinearGradient(0, 0, 0, H);
+        daySky.addColorStop(0, '#55a8d9');
+        daySky.addColorStop(0.58, '#b8e1ed');
+        daySky.addColorStop(1, '#d8e7c2');
+        ctx.fillStyle = daySky;
         ctx.fillRect(0, 0, W, H);
         ctx.globalAlpha = 1;
-        for (const st of S.stars) {
-            const tw = 0.4 + 0.6 * Math.abs(Math.sin(ms * 0.001 * 2 + st.tw));
-            ctx.fillStyle = 'rgba(210,225,245,' + (tw * 0.8) + ')';
-            ctx.fillRect(st.fx * W, st.fy * baseY, st.r, st.r);
-        }
-        ctx.globalAlpha = 1;
-        const moon = idx === 1 ? S.ch2.moon : idx === 2 ? S.ch3.moon : S.ch1.moon;
-        if (idx < 3) drawMoon(ctx, moon, W, baseY, ms * 0.001);
         chap.draw(t, ctx, W, H, baseY, bottomY, ms * 0.001, dt);
 
         const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.8);

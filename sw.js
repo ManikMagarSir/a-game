@@ -1,4 +1,4 @@
-const CACHE = 'voxel-survivor-v17';
+const CACHE = 'voxel-survivor-v24';
 const ASSETS = [
     './',
     './index.html',

@@ -37,7 +37,7 @@ to buy gear mid-run, and spend career credits on permanent upgrades between runs
 - **Rendering:** **Three.js r128** loaded from a CDN as a global `THREE` (not an import).
 - **Audio:** fully **procedural WebAudio** — zero asset files.
 - **State:** one shared mutable object `G` (`js/state.js`) imported by every module.
-- **Extras:** 8 weapons, 9 enemy types, 5 game modes, mod loader, level editor, static day lighting, PWA,
+- **Extras:** 8 weapons, 9 enemy types, a finite 8-wave campaign plus optional challenge modes, authored arenas, mod loader, level editor, static day lighting, PWA,
   **per-user local profiles**, an **intro cutscene**, a **procedurally synthesized soundtrack**, and a
   **single friendly difficulty for everyone** — infinite ammo (no reloads) and simple controls are the
   default for all players (the old Kids Mode toggle was removed and its easy features unified).
@@ -89,10 +89,7 @@ A static server is usually already running in this workspace at `http://127.0.0.
 
 **Intro cutscene** (`intro.js`): a **2D cinematic movie-style cutscene** rendered on a `<canvas>`
 (letterboxed, film grain, scanlines). It plays **after clicking PLAY** (the click unlocks audio), then
-the run starts. It is fully **automatic** and short (~7 s total): four quick chapters — **DAY 214**
-(parallax city skyline + fog), **THE OUTBREAK** (red blood moon, fires, an advancing zombie horde),
-**THE BARRICADE** (rotating beacon beam, rain, zombies pressing the fence), and **LAST SURVIVOR**
-(close-up survivor + "VOXEL SURVIVOR" title reveal). Chapters auto-advance (~1.6–1.9 s each) with
+the run starts. It is fully **automatic** and short (~7 s total): four quick chapters — **DAY 214** (parallax city skyline + fog), **THE OUTBREAK** (red blood moon, fires, an advancing zombie horde), **THE BARRICADE** (rotating beacon beam, rain, zombies pressing the fence), and **LAST SURVIVOR** (close-up survivor + "VOXEL SURVIVOR" title reveal). The campaign then moves through **ASHFALL OUTPOST**, **DROWNED METRO**, and **REDLINE REACTOR**. Chapters auto-advance (~1.6–1.9 s each) with
 typewriter subtitles, a progress bar, white cut-flashes + zoom punch, and a fade-out. **SFX play
 per chapter** (whoosh → distant explosion → thud → whoosh + groan), plus BGM starts alongside.
 Click/`Space`/`Enter` advances early; `Esc` or the **SKIP** button ends it and starts the run
@@ -162,11 +159,13 @@ Click/`Space`/`Enter` advances early; `Esc` or the **SKIP** button ends it and s
   animation** (corpses) instead of popping out of existence. HP/damage scale with wave number. Heads
   are tagged `userData.part === 'head'`, so **headshots work**. Zombies always face their movement
   direction exactly (lean/pose is applied on an inner rig so the yaw never tilts them off-axis).
-- **Waves:** spawn count scales with wave; intermission between waves; **boss wave** every 5th wave.
+- **Campaign:** the default **THE LAST CIRCUIT** mode is a finite 8-wave run. Waves 1–3 take place in **ASHFALL OUTPOST**, waves 4–6 in **DROWNED METRO**, and waves 7–8 in **REDLINE REACTOR**; boss encounters anchor waves 4 and 8. The run ends with **CIRCUIT BROKEN** after wave 8.
+- **Waves:** challenge-mode spawn count scales with wave; intermission between waves; **boss wave** every 5th wave in Endless.
   Enemy pool unlocks as waves rise (`pickSpawnType` in `waves.js`): runners wave 3+, crawlers wave 3+,
   brutes wave 4+, spitters wave 4+, exploders/shields wave 5+, screamers wave 6+.
 - **Game modes (`MODES`, lobby select):**
-  - **Endless Horde** — survive escalating waves as long as you can.
+  - **The Last Circuit** — finite 8-wave campaign across three authored arenas.
+  - **Endless Horde** — optional survival mode with escalating waves.
   - **Time Attack** — 3-minute timer (HUD shows `TIME 3:00`); reaching 0 ends the run with
     **"TIME UP!"** as the title.
   - **Boss Rush** — a boss spawns every wave.
@@ -243,13 +242,13 @@ The only shared mutable state. Key fields:
 - `G.state` — `'lobby' | 'playing' | 'paused' | 'levelup' | 'shop' | 'sandbox' | 'gameover'`.
 - `G.profile` — active profile name (`null` on first boot until the player creates one in the
   **profile modal**; then set via the lobby profile bar).
-- `G.mode` — current game mode id (`endless | time | bossrush | defense | sandbox`). `G.god` — god mode flag.
+- `G.mode` — current game mode id (`campaign | endless | time | bossrush | defense | sandbox`). `G.god` — god mode flag.
 - `G.player` — health, maxHealth, pos (`THREE.Vector3`), grenades, speeds, radius.
 - `G.mult` — global multipliers (damage, fireRate, reload, speed, pellets, pierce, head, mag, lifesteal).
 - `G.attach` — `{ mag:0, sup:0, scope:0 }` attachment flags, reset each run.
 - `G.weapons` — runtime copies of `config.WEAPONS` with live `ammo`.
 - `G.ownedWeapons` — `{0..7: bool}`, reset each run from career unlocks.
-- `G.game` — score, kills, wave, xp, level, xpToNext, wave bookkeeping, combo, cash, and stats:
+- `G.game` — score, kills, wave, arena, xp, level, xpToNext, wave bookkeeping, combo, cash, and stats:
   `timer` (Time Attack), `beaconHp`/`beaconMaxHp` (Defense), `shots`/`hits`/`headshots`.
 - `G.hitStop` — kill hit-stop timer. `G.shake` — screen shake. `G.overTitle` — custom game-over title.
 - `G.boss` — live boss zombie or `null`.
@@ -330,7 +329,7 @@ All balance lives in `config.js` so game logic rarely changes:
   with **`shopOwned(it, G)`** to render as owned/sold.
 - **`CAREER_UPGRADES`** — persistent upgrades with `max` level, `cost(level)`, and `effect(G)`
   applied at `beginGame` per owned level.
-- **`MODES`** — the 5 game modes: `{ico, name, desc}`. A **mode picker popup** (lobby button → card grid) writes `G.mode`.
+- **`MODES`** — the 6 game modes: `{ico, name, desc}`. A **mode picker popup** (lobby button → card grid) writes `G.mode`; **The Last Circuit** is the default finite campaign.
 - **`effMag(w, G)`** — effective magazine = `w.mag + G.mult.mag + G.attach.mag`. **Legacy/no-op**
   with infinite ammo (kept exported for API compatibility); magazine size never changes.
 
@@ -376,8 +375,7 @@ never mutates the config.
   `music.intensity` (0–1) drives which layers play and their filter/level; `combatIntensity()`
   ramps with wave + pending spawns so the track heats up during fights and thins to 0.2 in menus.
   `main.animate` calls `music.setIntensity(...)` every frame; `beginGame` calls `music.start()`.
-- **VFX (`effects.js`):** tracers (line segments), muzzle point light, **additive muzzle sprite**,
-  blood/impact particles with optional **`bias`** (directional spray) and **`rise`** (upward-floating
+- **VFX (`effects.js`):** tracers (line segments), muzzle point light, **additive muzzle sprite**, short-lived additive **impact bursts** with point lights, blood/impact particles with optional **`bias`** (directional spray) and **`rise`** (upward-floating
   smoke), explosion shockwave **rings** (`RingGeometry` scaling out), **`spawnSmoke`**, floating
   **damage numbers** projected to screen (with optional `cls` for `xp`/`cash` styling), **blood
   decals** (capped at 40, faded and removed in `updateEffects`), hitmarker. Explosions add smoke +
@@ -453,7 +451,7 @@ are all per-player. `persist(G)` fires on game over, settings changes, and caree
 
 ### 10.3 PWA
 - `manifest.json` + `icon.svg` (procedural SVG) enable "Add to Home Screen".
-- `sw.js` — cache version **`voxel-survivor-v13`** precaches all 24 JS modules (incl. `js/models/*`) +
+- `sw.js` — cache version **`voxel-survivor-v18`** precaches all 24 JS modules (incl. `js/models/*`) +
   CSS/HTML/manifest/icon. Network-first for navigations, cache-first for static assets,
   network-first-fallback-cache for the CDN Three.js script. Registered at the bottom of `index.html`.
 
@@ -469,18 +467,19 @@ are all per-player. `persist(G)` fires on game over, settings changes, and caree
    `.length = 0`, never reassign. (Kills splice from inside — iterate backwards.)
 5. **Circular imports are intentional.** See §5.3 — don't "fix" them, and never add top-level
    cross-module side effects.
-6. **Do not rename `spawnZombie`/`damageZombie`.** They are used both by core code and exposed as
+6. **Arena reset.** Authored arenas are rebuilt at the start of each run, so destroyed cover does not leak between attempts. Imported cover layouts are editor previews and are replaced by the selected arena when a run begins.
+7. **Do not rename `spawnZombie`/`damageZombie`.** They are used both by core code and exposed as
    `window.Voxel.spawnZombie` / `window.Voxel.damageZombie`.
-7. **Mod errors are non-fatal.** `loadMods` catches and `console.error`s; a bad mod cannot crash boot.
-8. **Intro audio needs the PLAY gesture.** The intro plays **after** clicking PLAY, so its SFX
+8. **Mod errors are non-fatal.** `loadMods` catches and `console.error`s; a bad mod cannot crash boot.
+9. **Intro audio needs the PLAY gesture.** The intro plays **after** clicking PLAY, so its SFX
    (`whoosh`/`thud`/`groan`/`explosion`) and BGM are audible. It can never play sound before the
    first gesture (browser autoplay policy).
-9. **Music lifecycle.** `music.start()` guards `if(this.running) return`, so re-entering PLAY never
+10. **Music lifecycle.** `music.start()` guards `if(this.running) return`, so re-entering PLAY never
    doubles the track; music stays at 0.2 intensity in menus by design. To silence it in menus, add
    `music.stop()` to `showMenu`/`gameOver`.
-10. **Profile mutation is destructive.** `deleteProfile` cannot be undone — the UI `confirm()`s first.
+11. **Profile mutation is destructive.** `deleteProfile` cannot be undone — the UI `confirm()`s first.
     `createProfile` uppercases + truncates names to 16 chars.
-11. **Few comments by design.**
+12. **Few comments by design.**
 
 ## 12. How to extend
 
@@ -504,8 +503,7 @@ No test framework is set up (intentionally minimal). Changes are validated with:
   asserting each `import { x }` is actually exported by its source (catches the earlier `spawnZombie`
   missing-export bug). It temporarily adds `js/package.json` `{"type":"module"}` and removes it
   afterward. Expected output: **"All 24 modules valid."**
-- **Manual:** load via the local server, hard-refresh, and play a wave in each mode. Recent smoke-test
-  checklist: **first-boot profile modal** → create a profile → lobby; profile create/switch/delete +
+- **Manual:** load via the local server, hard-refresh, select **THE LAST CIRCUIT**, and play through the intro and first sector. Confirm the sector tag updates, cover blocks movement, enemies spawn outside cover, and the wave banner names the current arena; then smoke-test each challenge mode. Recent smoke-test checklist: **first-boot profile modal** → create a profile → lobby; profile create/switch/delete +
   persistence across reloads; legacy migration into `SURVIVOR`; intro cutscene + skip; BGM starting on
   PLAY and heating up as waves ramp; **∞ ammo** (no reload) + KILLS counter in the HUD; zombies
   reaching melee range and dealing damage (ghost bar + red flash + heartbeat under 30%); **boss AI**
@@ -515,9 +513,7 @@ No test framework is set up (intentionally minimal). Changes are validated with:
   punches), and the red aura pulsing in Phase 5; **weapon switching in the field shows the right viewmodel**
   (fix: `applySwitch` calls `rebuildViewModel()`); the **F MELEE cooldown bar** filling up after a
   swing; **static day lighting** (no more day/night cycle); headshots registering; shop
-  categories + buy sound; muzzle sprite; explosion smoke; shield-break sound; **toast popups**
-- **Service worker:** `sw.js` caches every asset (cache-first) under a versioned cache name. After any
-  code change, **bump the `CACHE` version** (e.g. `voxel-survivor-v14`) so players stop getting stale
+  categories + buy sound; muzzle sprite; explosion smoke; shield-break sound; **toast popups**- **Service worker:** `sw.js` caches every asset (cache-first) under a versioned cache name. After any code change, **bump the `CACHE` version** (currently `voxel-survivor-v18`) so players stop getting stale
   files — this was the cause of "boss phases / new models / weapon switching not appearing".
   (combo / no-grenades); and **popup modals** (pause/level-up/shop/sandbox/career).
 
@@ -540,7 +536,7 @@ No test framework is set up (intentionally minimal). Changes are validated with:
   hordes, beacon beam, title reveal).
 - ✅ **Procedural BGM** — dynamic dark-techno soundtrack that ramps with combat intensity.
 - ✅ **Textures** — procedural canvas textures for world/zombies/weapons + glowing zombie eyes.
-- ✅ **VFX/SFX pass** — muzzle sprites, smoke, biased particles, buy/shield-break/summon/heartbeat/game-over SFX.
+- ✅ **VFX/SFX pass** — muzzle sprites, impact light bursts, smoke, biased particles, arena-colored neon, buy/shield-break/summon/heartbeat/game-over SFX.
 - ✅ **Unified friendly defaults** — Kids Mode removed; infinite ammo (no reload), simple controls,
   a clear HUD with a KILLS counter, a first-boot **create-your-profile** modal, and a fully
   accessible field shop are now the default for **everyone**. Dead reload/magazine perks and the
@@ -549,11 +545,11 @@ No test framework is set up (intentionally minimal). Changes are validated with:
 - ▶ Controller/gamepad support.
 
 **Phase 2 — Content ✅ (mostly done)**
+- ✅ Finite authored campaign with three arena layouts, sector progression HUD, landmark lighting, and arena-specific spawn bounds.
 - ✅ New enemy archetypes: **spitter** (ranged acid), **screamer** (summons), **shield** brute,
   **exploder** (suicide AoE), plus existing boss/mini-boss variants.
 - ✅ New weapons: LMG, sniper, crossbow, flamethrower.
-- ✅ Game modes: **Endless Horde**, **Time Attack**, **Boss Rush**, **Wave Defense** (beacon),
-  **Sandbox** (god mode + spawn menu).
+- ✅ Game modes: **The Last Circuit** (finite 8-wave campaign), **Endless Horde**, **Time Attack**, **Boss Rush**, **Wave Defense** (beacon), **Sandbox** (god mode + spawn menu).
 - ✅ Static day lighting (the day/night cycle was removed for cleaner visibility), destructible cover.
 - ✅ Local **leaderboard** (top runs) and **stats screen** (accuracy, headshots, best wave).
 - ▶ Environmental hazards: weather, traps, lureable zombies.

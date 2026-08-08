@@ -12,6 +12,13 @@ function finalize(g, scale, coreMat){
     g.scale.setScalar(scale);
     g.userData.formScale = scale;
     g.userData.coreMat = coreMat;
+    g.userData.glowParts = [];
+    if(parts.core) parts.core.userData.preserveGlow = true;
+    g.traverse(o => {
+        if(o.isMesh && o !== parts.core && o.material && o.material.emissive && o.material.emissiveIntensity > 0){
+            g.userData.glowParts.push(o);
+        }
+    });
     return g;
 }
 

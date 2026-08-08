@@ -3,7 +3,8 @@
     "short_name": "Voxel Survivor",
     "description": "Blocky zombie-survival FPS in the browser.",
     "start_url": "./index.html",
-    "display": "standalone",
+    "display": "fullscreen",
+    "orientation": "landscape",
     "background_color": "#0b0f14",
     "theme_color": "#0b0f14",
     "icons": [

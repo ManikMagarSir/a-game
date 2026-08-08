@@ -2,17 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VOXEL SURVIVOR - 3D Zombie FPS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>VOXEL SURVIVOR // FIELD REPORT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>window.VOXEL_MODS = [];</script>
 <link rel="manifest" href="manifest.json">
 </head>
 <body>
+<div id="orientationGate" class="orientation-gate hidden" role="status" aria-live="polite">
+    <div class="orientation-icon" aria-hidden="true">↻</div>
+    <strong>ROTATE TO LANDSCAPE</strong>
+    <span>Voxel Survivor needs a wide screen for touch controls.</span>
+</div>
 <div id="game"></div>
 
 <!-- ===== HUD (minimal) ===== -->
@@ -34,7 +39,9 @@
             <span class="ret-tick rt-s"></span>
             <span class="ret-tick rt-e"></span>
             <span class="ret-tick rt-w"></span>
+            <span class="ret-hash hash-1"></span><span class="ret-hash hash-2"></span><span class="ret-hash hash-3"></span>
         </div>
+        <div class="scope-label" id="scopeLabel">REFLEX DOT</div>
     </div>
 
     <div class="panel-tl">
@@ -56,6 +63,8 @@
     </div>
 
     <div id="timerLine" style="display:none">TIME <span id="timerText">3:00</span></div>
+    <div id="arenaTag"><span id="arenaName">RIVERMOUTH MAIN STREET</span><span class="arena-sep">·</span><span id="arenaProgress">DISTRICT 1 / 3</span></div>
+    <div id="arenaObjective">SURVIVE THE DISTRICT</div>
 
     <div class="panel-bc">
         <div class="wc-row">
@@ -88,6 +97,19 @@
     </div>
 </div>
 
+<div id="touchControls" class="hidden" aria-label="Touch controls">
+    <div id="touchLookPad" class="touch-look-pad" aria-label="Drag to look"><span>DRAG TO LOOK</span></div>
+    <div id="moveStick" class="touch-stick"><div id="moveKnob" class="touch-knob"></div><span>MOVE</span></div>
+    <div class="touch-actions">
+        <button id="touchAim" class="touch-action aim">AIM</button>
+        <button id="touchFire" class="touch-action fire">FIRE</button>
+        <button id="touchMelee" class="touch-action">MELEE</button>
+        <button id="touchGrenade" class="touch-action">GRENADE</button>
+        <button id="touchSwap" class="touch-action">WEAPON</button>
+        <button id="touchSprint" class="touch-action sprint">SPRINT</button>
+    </div>
+</div>
+
 <div id="dmgContainer"></div>
 
 <!-- ===== INTRO CUTSCENE (2D cinematic) ===== -->
@@ -99,112 +121,88 @@
     <div class="intro-subwrap">
         <div class="intro-kicker" id="introKicker">CHAPTER I — THE FALL</div>
         <div class="intro-title" id="introChap">DAY 214</div>
-        <div class="intro-sub" id="introSub">The city fell silent weeks ago. The dead do not sleep.</div>
+        <div class="intro-sub" id="introSub">The quarantine line is gone. Three town districts remain.</div>
         <div class="intro-progress-bar"><span class="intro-progress" id="introProgress"></span></div>
     </div>
     <button class="btn btn-small intro-skip" id="introSkip">SKIP INTRO (ESC)</button>
 </div>
 
-<!-- ===== LOBBY (bento grid) ===== -->
-<div id="lobby" class="overlay">
-    <div class="bento">
-        <div class="bento-card hero">
-            <h1>VOXEL SURVIVOR</h1>
-            <h2>3D Zombie FPS</h2>
-        </div>
+<!-- ===== MAIN MENU ===== -->
+<div id="lobby" class="overlay minimal-lobby">
+    <div class="menu-shell">
+        <div class="split-lobby">
+            <section class="split-pane start-pane">
+                <div class="pane-index">01 / DEPLOY</div>
+                <div class="hero-eyebrow">MAPLE COUNTY // DAY RUN</div>
+                <h1>VOXEL<br>SURVIVOR</h1>
+                <p class="pane-copy">A quiet district. Six waves. One way out.</p>
+                <button class="btn btn-big" id="playBtn">START RUN <span class="play-arrow">→</span></button>
+                <div class="play-hint"><span class="status-dot"></span> EXTRACTION WINDOW OPEN</div>
+                <nav class="pane-actions" aria-label="Run menu">
+                    <button class="pane-action" id="settingsOpen"><span>SETTINGS</span><b>→</b></button>
+                    <button class="pane-action" id="careerOpen"><span>SHOP</span><b>→</b></button>
+                    <button class="pane-action" id="modeBtn"><span>MODE</span><b class="mode-value">DAY RUN</b><i class="mode-chev">↗</i></button>
+                </nav>
+            </section>
 
-        <div class="bento-card play">
-            <button class="btn btn-big" id="playBtn">PLAY</button>
-            <div class="play-hint">Infinite ammo · No reload · One difficulty for everyone</div>
-        </div>
-
-        <div class="bento-card profile">
-            <div class="bento-title">PROFILE</div>
-            <div class="profile-bar">
+            <section class="split-pane profile-pane">
+                <div class="pane-index">02 / SURVIVOR</div>
+                <div class="profile-mark">◈</div>
+                <div class="profile-kicker">CURRENT PROFILE</div>
                 <div class="profile-pill" id="profileTag">SURVIVOR</div>
-                <select id="profileSelect"></select>
-            </div>
-            <div class="profile-create">
-                <input id="profileName" type="text" maxlength="16" placeholder="NEW PROFILE NAME">
-                <button class="btn btn-small" id="profileAdd">CREATE</button>
-                <button class="btn btn-small btn-danger" id="profileDel">DELETE</button>
-            </div>
+                <p class="pane-copy">Your record, upgrades, and field history.</p>
+                <nav class="pane-actions" aria-label="Survivor menu">
+                    <button class="pane-action" id="profileOpen"><span>PROFILE</span><b>→</b></button>
+                    <button class="pane-action" id="historyOpen"><span>HISTORY</span><b>→</b></button>
+                </nav>
+                <div class="profile-foot"><span>STATUS</span><strong>READY</strong></div>
+            </section>
         </div>
+    </div>
 
-        <div class="bento-card stats">
-            <div class="bento-title">CAREER</div>
-            <div class="lobby-stats">
-                <div>BEST SCORE <b id="lobbyBestScore">0</b></div>
-                <div>BEST WAVE <b id="lobbyBestWave">0</b></div>
-                <div>CREDITS <b id="lobbyCredits">0</b> 💎</div>
+    <div id="settingsPanel" class="modal-wrap hidden minimal-panel-wrap">
+        <div class="modal minimal-panel">
+            <div class="panel-heading"><div><span class="panel-kicker">RUN CONTROL</span><h2>SETTINGS</h2></div><button class="panel-close" id="settingsClose">×</button></div>
+            <div class="quick-settings" aria-label="Easy settings">
+                <button class="quick-setting" id="sensBtn" type="button"><span class="quick-setting-label">AIM</span><strong id="sensVal">NORMAL</strong></button>
+                <button class="quick-setting" id="volBtn" type="button"><span class="quick-setting-label">SOUND</span><strong id="volVal">ON</strong></button>
+                <button class="quick-setting" id="gfxBtn" type="button"><span class="quick-setting-label">QUALITY</span><strong id="gfxVal">MEDIUM</strong></button>
             </div>
-        </div>
-
-        <div class="bento-card lb">
-            <div class="bento-title">🏆 TOP RUNS</div>
-            <div id="lbList"></div>
-        </div>
-
-        <div class="bento-card settings">
-            <div class="bento-title">SETTINGS</div>
-            <div class="settings">
-                <label>SENSITIVITY <input type="range" id="sensRange" min="0.3" max="2.5" step="0.1"><span id="sensVal">1.0</span></label>
-                <label>VOLUME <input type="range" id="volRange" min="0" max="1" step="0.05"><span id="volVal">0.6</span></label>
-                <label>GRAPHICS
-                    <select id="gfxSelect">
-                        <option value="low">LOW</option>
-                        <option value="medium">MEDIUM</option>
-                        <option value="high">HIGH</option>
-                    </select>
-                </label>
-                <label>MODE
-                    <button id="modeBtn" type="button">ENDLESS HORDE <span class="mode-chev">▾</span></button>
-                </label>
-            </div>
-        </div>
-
-        <div class="bento-card keys">
-            <div class="bento-title">CONTROLS</div>
-            <div class="keys keys-grid" id="keysFull">
-                <span><b>WASD</b> Move</span>
-                <span><b>MOUSE</b> Look</span>
-                <span><b>L-CLICK</b> Shoot</span>
-                <span><b>R-CLICK</b> Aim</span>
-                <span><b>1-8</b> Weapons</span>
-                <span><b>WHEEL</b> Switch</span>
-                <span><b>F</b> Melee</span>
-                <span><b>G</b> Grenade</span>
-                <span><b>B</b> Shop</span>
-                <span><b>SHIFT</b> Sprint</span>
-                <span><b>ESC</b> Pause</span>
-            </div>
-        </div>
-
-        <div class="bento-card extras">
-            <div class="bento-title">EXTRAS</div>
-            <button class="btn btn-small" id="careerOpen">CAREER SHOP</button>
-            <div class="btn-row">
-                <button class="btn btn-small" id="mapExport">EXPORT MAP</button>
-                <button class="btn btn-small" id="mapImport">IMPORT MAP</button>
-                <input type="file" id="mapFile" accept=".json,application/json" style="display:none">
+            <div class="panel-divider"></div>
+            <div class="control-list">
+                <span><b>WASD</b> MOVE</span><span><b>MOUSE</b> LOOK</span><span><b>L-CLICK</b> SHOOT</span><span><b>R-CLICK</b> AIM</span><span><b>F</b> MELEE</span><span><b>G</b> GRENADE</span><span><b>SHIFT</b> SPRINT</span><span><b>ESC</b> PAUSE</span>
             </div>
         </div>
     </div>
 
-    <div id="careerShop" class="modal-wrap hidden">
-        <div class="modal">
-            <h2>CAREER SHOP <span class="credits">💎 <span id="careerCredits2">0</span></span></h2>
+    <div id="profilePanel" class="modal-wrap hidden minimal-panel-wrap">
+        <div class="modal minimal-panel">
+            <div class="panel-heading"><div><span class="panel-kicker">IDENTITY</span><h2>PROFILE</h2></div><button class="panel-close" id="profileClose">×</button></div>
+            <div class="profile-bar"><div class="profile-pill" id="profilePanelTag">SURVIVOR</div><select id="profileSelect"></select></div>
+            <div class="profile-create"><input id="profileName" type="text" maxlength="16" placeholder="NEW PROFILE NAME"><button class="btn btn-small" id="profileAdd">CREATE</button><button class="btn btn-small btn-danger" id="profileDel">DELETE</button></div>
+            <div class="profile-note">Your profile saves best scores, credits, and career upgrades.</div>
+        </div>
+    </div>
+
+    <div id="historyPanel" class="modal-wrap hidden minimal-panel-wrap">
+        <div class="modal minimal-panel history-panel">
+            <div class="panel-heading"><div><span class="panel-kicker">FIELD LOG</span><h2>HISTORY</h2></div><button class="panel-close" id="historyClose">×</button></div>
+            <div class="history-stats"><div><span>BEST SCORE</span><b id="lobbyBestScore">0</b></div><div><span>BEST WAVE</span><b id="lobbyBestWave">0</b></div><div><span>CREDITS</span><b id="lobbyCredits">0</b></div></div>
+            <div class="panel-divider"></div>
+            <div class="panel-kicker">TOP RUNS</div><div id="lbList" class="history-list"></div>
+        </div>
+    </div>
+
+    <div id="careerShop" class="modal-wrap hidden minimal-panel-wrap">
+        <div class="modal minimal-panel shop-panel">
+            <div class="panel-heading"><div><span class="panel-kicker">SUPPLY DEPOT</span><h2>SHOP <span class="credits">◆ <span id="careerCredits2">0</span></span></h2></div><button class="panel-close" id="careerClose">×</button></div>
             <div id="careerList" class="shop-list"></div>
-            <button class="btn btn-small" id="careerClose">CLOSE</button>
         </div>
     </div>
 
-    <div id="modePick" class="modal-wrap hidden">
-        <div class="modal">
-            <div class="modal-head">
-                <h2>CHOOSE MODE</h2>
-                <button class="btn btn-small" id="modePickClose">CLOSE</button>
-            </div>
+    <div id="modePick" class="modal-wrap hidden minimal-panel-wrap">
+        <div class="modal minimal-panel mode-panel">
+            <div class="panel-heading"><div><span class="panel-kicker">RUN CONTROL</span><h2>MODE</h2></div><button class="panel-close" id="modePickClose">×</button></div>
             <div class="mode-grid" id="modeList"></div>
         </div>
     </div>
@@ -287,6 +285,7 @@
         <div class="bento-card go-stat"><div class="go-k">LEVEL</div><div class="go-v" id="goLevel">0</div></div>
         <div class="bento-card go-stat"><div class="go-k">CREDITS</div><div class="go-v" id="goCredits">0</div></div>
         <div class="bento-card go-stat go-best"><div class="go-k">BEST SCORE</div><div class="go-v" id="goBest">0</div></div>
+        <div class="bento-card go-stat"><div class="go-k">LAST SECTOR</div><div class="go-v" id="goArena">—</div></div>
         <div class="bento-card go-stat"><div class="go-k">ACCURACY</div><div class="go-v" id="goAcc">-</div></div>
         <div class="bento-card go-stat"><div class="go-k">HEADSHOTS</div><div class="go-v" id="goHead">0</div></div>
     </div>
@@ -296,6 +295,21 @@
     </div>
 </div>
 
+<script>
+(() => {
+    const gate = document.getElementById('orientationGate');
+    const mobile = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+    const updateOrientationGate = () => {
+        const blocked = mobile && innerWidth <= innerHeight;
+        document.body.classList.toggle('orientation-locked', blocked);
+        gate.classList.toggle('hidden', !blocked);
+        gate.setAttribute('aria-hidden', String(!blocked));
+    };
+    addEventListener('resize', updateOrientationGate, { passive:true });
+    addEventListener('orientationchange', updateOrientationGate, { passive:true });
+    updateOrientationGate();
+})();
+</script>
 <script type="module" src="js/main.js"></script>
 <script>
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){

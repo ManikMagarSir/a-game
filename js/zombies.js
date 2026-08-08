@@ -1,5 +1,5 @@
 import { G } from './state.js';
-import { scene, beaconPos } from './world.js';
+import { scene, getSpawnPoint } from './world.js';
 import { ZTYPES } from './config.js';
 import { buildZombieMesh, buildBossForm, buildPickup } from './models/index.js';
 import * as FX from './effects.js';
@@ -28,8 +28,8 @@ export function spawnZombie(type, at){
     if(at){
         g.position.set(at.x, 0, at.z);
     } else {
-        const ang = Math.random() * Math.PI * 2, dist = 32 + Math.random() * 18;
-        g.position.set(Math.cos(ang) * dist, 0, Math.sin(ang) * dist);
+        const p = getSpawnPoint();
+        g.position.set(p.x, 0, p.z);
     }
     const hp = isBoss
         ? Math.round(t.hp * Math.pow(1.22, Math.max(0, G.game.wave - 1)))
@@ -41,6 +41,7 @@ export function spawnZombie(type, at){
         score: t.score,
         cash: t.cash,
         alive: true, attackCd: 0, hitFlash: 0, lunge: 0, atkAnim: 0, groanCd: 1 + Math.random() * 3,
+        animTime: Math.random() * Math.PI * 2, lastPos: g.position.clone(),
     };
     if(isBoss){
         z.abilityCd = 3;
@@ -57,7 +58,11 @@ export function spawnZombie(type, at){
     g.hitMeshes.forEach(m => m.userData.zombie = z);
     scene.add(g);
     zombies.push(z);
-    if(isBoss){ G.boss = z; document.getElementById('bossBarWrap').style.display = 'block'; }
+    if(isBoss){
+        G.boss = z;
+        document.getElementById('bossBarWrap').style.display = 'block';
+        bossCutscene(z, true);
+    }
     return z;
 }
 
@@ -75,6 +80,7 @@ export function damageZombie(z, dmg, point, isHead, shieldPierce){
     z.hitFlash = 0.08;
     if(isHead) G.game.headshots++;
     FX.spawnParticles(point || z.group.position.clone().setY(1.3), isHead ? 0xaa2222 : 0x882222, isHead ? 10 : 6, { bias: new THREE.Vector3(0, 2, 0) });
+    FX.spawnImpactBurst(point || z.group.position.clone().setY(1.3), isHead ? 0xffcc44 : 0xff4455, isHead ? 1.15 : 0.75);
     if(isHead) FX.spawnParticles(point || z.group.position.clone().setY(1.6), 0xffcc44, 6, { bias: new THREE.Vector3(0, 3, 0) });
     FX.spawnBloodDecal(point || z.group.position.clone());
     FX.showHitmarker(isHead);
@@ -108,6 +114,7 @@ function killZombie(z){
 
     gainXp(Math.round((10 + G.game.wave*2 + (z.maxHp>120?5:0)) * (z.type==='boss'?4:1)));
     FX.spawnParticles(z.group.position.clone().setY(1.1), ZTYPES[z.type].color, 14);
+    FX.spawnImpactBurst(z.group.position.clone().setY(1.1), ZTYPES[z.type].color, z.type === 'boss' ? 3.2 : 1.4);
     audio.zombieDie();
 
     if(z.type === 'boss'){ G.boss = null; document.getElementById('bossBarWrap').style.display = 'none'; spawnPickup(z.group.position, 'grenade'); }
@@ -283,12 +290,21 @@ export function clearProjectiles(){
     proj.length = 0;
 }
 
+export function clearTransientEntities(){
+    for(const p of pickups) scene.remove(p.mesh);
+    pickups.length = 0;
+    for(const c of corpses) scene.remove(c.group);
+    corpses.length = 0;
+    clearProjectiles();
+}
+
 function swapBossForm(z){
     const old = z.group;
     const ng = buildBossForm(z.rage);
     ng.position.copy(old.position);
     ng.rotation.copy(old.rotation);
     ng.userData.walk = old.userData.walk || 0;
+    ng.userData.glowParts = ng.userData.glowParts || [];
     scene.remove(old);
     scene.add(ng);
     z.group = ng;
@@ -493,12 +509,7 @@ export function updateZombies(dt){
         const g = z.group;
         const parts = g.userData.parts;
         const isBoss = z.type === 'boss';
-        let tx = G.player.pos.x, tz = G.player.pos.z, targetPlayer = true;
-        if(!isBoss && G.mode === 'defense' && G.game.beaconHp > 0){
-            const dbx = beaconPos.x - g.position.x, dbz = beaconPos.z - g.position.z;
-            const dpx = G.player.pos.x - g.position.x, dpz = G.player.pos.z - g.position.z;
-            if(dbx*dbx + dbz*dbz < dpx*dpx + dpz*dpz){ tx = beaconPos.x; tz = beaconPos.z; targetPlayer = false; }
-        }
+        const tx = G.player.pos.x, tz = G.player.pos.z, targetPlayer = true;
         const dx = tx - g.position.x, dz = tz - g.position.z;
         const dist = Math.hypot(dx, dz);
         const tt = ZTYPES[z.type];
@@ -509,7 +520,7 @@ export function updateZombies(dt){
             updateBoss(z, dt, dist);
         } else {
             const spitterRanged = z.type === 'spitter' && dist < 18 && dist > 5;
-            const atkDist = targetPlayer ? 1.4 : 2.0;
+            const atkDist = 1.4;
 
             if(spitterRanged){
                 z.attackCd -= dt;
@@ -541,17 +552,7 @@ export function updateZombies(dt){
                 if(z.attackCd <= 0){
                     z.attackCd = 0.8;
                     z.atkAnim = 0.45;
-                    if(targetPlayer){
-                        hurtPlayer(z.dmg);
-                    } else {
-                        G.game.beaconHp -= z.dmg;
-                        audio.hurt();
-                        if(G.game.beaconHp <= 0){
-                            G.game.beaconHp = 0;
-                            G.overTitle = 'BEACON DESTROYED';
-                            G._onDeath && G._onDeath();
-                        }
-                    }
+                    hurtPlayer(z.dmg);
                 }
                 g.rotation.set(0, Math.atan2(dx, dz), 0);
                 z.lunge = Math.min(0.4, z.lunge + dt * 2);
@@ -595,6 +596,14 @@ export function updateZombies(dt){
             g.hitMeshes.forEach(m => m.material.emissive && m.material.emissive.setHex(0xaa0000));
         } else {
             g.hitMeshes.forEach(m => m.material.emissive && m.material.emissive.setHex(0x000000));
+        }
+
+            const moved = (g.position.x - z.lastPos.x) ** 2 + (g.position.z - z.lastPos.z) ** 2 > 0.0004;
+        if(moved){ z.lastPos.x = g.position.x; z.lastPos.z = g.position.z; }
+        z.animTime += dt * (moved ? 3.5 : 1.1);
+        if(g.userData.glowParts){
+            const pulse = 0.8 + Math.abs(Math.sin(z.animTime * 2.4)) * 1.2;
+            g.userData.glowParts.forEach(m => { if(m.material) m.material.emissiveIntensity = pulse; });
         }
 
         z.groanCd -= dt;

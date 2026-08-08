@@ -21,6 +21,8 @@ export function buildZombieMesh(type){
     const jaw = boxMat({ x: 0.42, y: 0.14, z: 0.32 }, skin); jaw.position.set(0, 1.6, 0.3);
     const eyeL = boxMat({ x: 0.14, y: 0.14, z: 0.08 }, eyeMat); eyeL.position.set(-0.15, 1.93, 0.29);
     const eyeR = boxMat({ x: 0.14, y: 0.14, z: 0.08 }, eyeMat); eyeR.position.set(0.15, 1.93, 0.29);
+    const neck = boxMat({ x: 0.3, y: 0.22, z: 0.3 }, skin); neck.position.set(0, 1.58, 0);
+    const spine = boxMat({ x: 0.16, y: 0.7, z: 0.12 }, boneMat); spine.position.set(0, 1.5, -0.34);
 
     const armL = limb(-0.6, 1.5, 0, 0.26, 0.6, 0.26, cloth, { shin: true, shinH: 0.52, bend: 0.7 });
     const armR = limb(0.6, 1.5, 0, 0.26, 0.6, 0.26, cloth, { shin: true, shinH: 0.52, bend: 0.7 });
@@ -62,13 +64,19 @@ export function buildZombieMesh(type){
         sac.position.set(0, 1.0, -0.5);
         rig.add(snout, sac);
     }
-    if(type === 'runner') lean = 0.3;
+    if(type === 'runner'){
+        lean = 0.3;
+        const clawL = boxMat({ x: 0.12, y: 0.42, z: 0.18 }, boneMat); clawL.position.set(-0.72, 1.02, 0.28); clawL.rotation.z = 0.35;
+        const clawR = boxMat({ x: 0.12, y: 0.42, z: 0.18 }, boneMat); clawR.position.set(0.72, 1.02, 0.28); clawR.rotation.z = -0.35;
+        rig.add(clawL, clawR);
+    }
 
-    rig.add(body, chest, head, jaw, eyeL, eyeR, armL, armR, legL, legR);
+    rig.add(body, chest, head, jaw, eyeL, eyeR, neck, spine, armL, armR, legL, legR);
     rig.rotation.x = lean;
     g.scale.setScalar(t.scale || 1);
     g.userData.tilt = 0;
     g.userData.parts = { body, head, chest, armL, armR, legL, legR, jaw };
+    g.userData.glowParts = [eyeL, eyeR];
     g.userData.walk = Math.random() * Math.PI * 2;
     head.userData.part = 'head';
     body.userData.part = 'body';
@@ -98,6 +106,7 @@ function buildCrawlerMesh(){
     g.scale.setScalar(t.scale || 1);
     g.userData.tilt = 0;
     g.userData.parts = { body: torso, head, chest: torso, armL: fL, armR: fR, legL: bL, legR: bR, jaw };
+    g.userData.glowParts = [eyeL, eyeR];
     g.userData.walk = Math.random() * Math.PI * 2;
     g.userData.crawler = true;
     head.userData.part = 'head';

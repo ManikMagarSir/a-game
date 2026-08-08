@@ -31,7 +31,7 @@ export function chooseAbility(a){
     } else {
         hideLevelUp();
         G.state = 'playing';
-        requestLock();
+        if(!G.touchDevice) requestLock();
     }
 }
 

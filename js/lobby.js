@@ -3,22 +3,33 @@ import { CAREER_UPGRADES, MODES } from './config.js';
 import { buyCareerUpgrade } from './progression.js';
 import { audio } from './audio.js';
 import { persist, getProfiles, createProfile, deleteProfile, hydrate, setActiveProfile } from './storage.js';
-import { applyGfx, serializeWorld, loadWorld } from './world.js';
+import { applyGfx } from './world.js';
 
 let el = {};
 
 export function initLobby(beginCb){
     el = {
         playBtn: document.getElementById('playBtn'),
-        sensRange: document.getElementById('sensRange'),
-        volRange: document.getElementById('volRange'),
+        sensBtn: document.getElementById('sensBtn'),
+        volBtn: document.getElementById('volBtn'),
+        gfxBtn: document.getElementById('gfxBtn'),
         sensVal: document.getElementById('sensVal'),
         volVal: document.getElementById('volVal'),
-        gfxSelect: document.getElementById('gfxSelect'),
+        gfxVal: document.getElementById('gfxVal'),
         modeBtn: document.getElementById('modeBtn'),
         modePick: document.getElementById('modePick'),
         modePickClose: document.getElementById('modePickClose'),
         modeList: document.getElementById('modeList'),
+        settingsOpen: document.getElementById('settingsOpen'),
+        settingsClose: document.getElementById('settingsClose'),
+        settingsPanel: document.getElementById('settingsPanel'),
+        profileOpen: document.getElementById('profileOpen'),
+        profileClose: document.getElementById('profileClose'),
+        profilePanel: document.getElementById('profilePanel'),
+        profilePanelTag: document.getElementById('profilePanelTag'),
+        historyOpen: document.getElementById('historyOpen'),
+        historyClose: document.getElementById('historyClose'),
+        historyPanel: document.getElementById('historyPanel'),
         profileSelect: document.getElementById('profileSelect'),
         profileName: document.getElementById('profileName'),
         profileAdd: document.getElementById('profileAdd'),
@@ -33,9 +44,6 @@ export function initLobby(beginCb){
         lobbyCredits: document.getElementById('lobbyCredits'),
         careerCredits2: document.getElementById('careerCredits2'),
         lbList: document.getElementById('lbList'),
-        mapExport: document.getElementById('mapExport'),
-        mapImport: document.getElementById('mapImport'),
-        mapFile: document.getElementById('mapFile'),
     };
 
     el.playBtn.onclick = () => { audio.init(); beginCb(); };
@@ -65,50 +73,43 @@ export function initLobby(beginCb){
         refreshLobby();
     };
 
-    el.sensRange.oninput = () => {
-        G.settings.sensitivity = parseFloat(el.sensRange.value);
-        el.sensVal.textContent = G.settings.sensitivity.toFixed(1);
+    el.sensBtn.onclick = () => {
+        const steps = [0.6, 1, 1.4, 1.8];
+        const current = steps.indexOf(+G.settings.sensitivity);
+        G.settings.sensitivity = steps[(current + 1) % steps.length];
+        syncControls();
         persist(G);
-    };
-    el.volRange.oninput = () => {
-        G.settings.volume = parseFloat(el.volRange.value);
-        el.volVal.textContent = G.settings.volume.toFixed(2);
-        audio.setVolume(G.settings.volume);
-        persist(G);
-    };
-
-    el.gfxSelect.onchange = () => {
-        G.settings.gfx = el.gfxSelect.value;
-        applyGfx();
-        persist(G);
-    };
-    el.modeBtn.onclick = () => { renderModes(); el.modePick.classList.remove('hidden'); audio.click(); };
-    el.modePickClose.onclick = () => { el.modePick.classList.add('hidden'); audio.click(); };
-
-    el.careerOpen.onclick = () => { el.careerShop.classList.remove('hidden'); renderCareer(); };
-    el.careerClose.onclick = () => el.careerShop.classList.add('hidden');
-
-    el.mapExport.onclick = () => {
-        const blob = new Blob([serializeWorld()], { type:'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'voxel-map.json';
-        a.click();
-        URL.revokeObjectURL(a.href);
         audio.click();
     };
-    el.mapImport.onclick = () => el.mapFile.click();
-    el.mapFile.onchange = (e) => {
-        const f = e.target.files[0];
-        if(!f) return;
-        const r = new FileReader();
-        r.onload = () => {
-            try { loadWorld(r.result); audio.click(); }
-            catch(err){ console.error('MAP IMPORT FAILED', err); alert('Map import failed: ' + err.message); }
-        };
-        r.readAsText(f);
-        e.target.value = '';
+    el.volBtn.onclick = () => {
+        G.settings.volume = G.settings.volume > 0 ? 0 : 0.6;
+        syncControls();
+        audio.setVolume(G.settings.volume);
+        persist(G);
+        audio.click();
     };
+    el.gfxBtn.onclick = () => {
+        const steps = ['low', 'medium', 'high'];
+        const current = steps.indexOf(G.settings.gfx || 'medium');
+        G.settings.gfx = steps[(current + 1) % steps.length];
+        applyGfx();
+        syncControls();
+        persist(G);
+        audio.click();
+    };
+    const closePanels = () => [el.settingsPanel, el.profilePanel, el.historyPanel, el.careerShop, el.modePick].forEach(panel => panel?.classList.add('hidden'));
+    const openPanel = panel => { closePanels(); panel?.classList.remove('hidden'); audio.click(); };
+    el.settingsOpen.onclick = () => openPanel(el.settingsPanel);
+    el.settingsClose.onclick = closePanels;
+    el.profileOpen.onclick = () => openPanel(el.profilePanel);
+    el.profileClose.onclick = closePanels;
+    el.historyOpen.onclick = () => openPanel(el.historyPanel);
+    el.historyClose.onclick = closePanels;
+    el.modeBtn.onclick = () => { renderModes(); openPanel(el.modePick); };
+    el.modePickClose.onclick = closePanels;
+
+    el.careerOpen.onclick = () => { openPanel(el.careerShop); renderCareer(); };
+    el.careerClose.onclick = closePanels;
 
     const bootModal = document.getElementById('profileModal');
     const bootName = document.getElementById('profileNameBoot');
@@ -135,13 +136,18 @@ export function initLobby(beginCb){
 }
 
 function syncControls(){
-    el.sensRange.value = G.settings.sensitivity;
-    el.volRange.value = G.settings.volume;
-    el.sensVal.textContent = (+G.settings.sensitivity).toFixed(1);
-    el.volVal.textContent = (+G.settings.volume).toFixed(2);
-    el.gfxSelect.value = G.settings.gfx || 'medium';
-    if(el.modeBtn && MODES[G.mode]) el.modeBtn.innerHTML = MODES[G.mode].name + ' <span class="mode-chev">▾</span>';
+    const aimLabels = { 0.6:'LOW', 1:'NORMAL', 1.4:'FAST', 1.8:'VERY FAST' };
+    const quality = (G.settings.gfx || 'medium').toUpperCase();
+    el.sensVal.textContent = aimLabels[+G.settings.sensitivity] || 'NORMAL';
+    el.volVal.textContent = G.settings.volume > 0 ? 'ON' : 'OFF';
+    el.gfxVal.textContent = quality;
+    if(el.modeBtn && MODES[G.mode]) {
+        const value = el.modeBtn.querySelector('.mode-value');
+        if(value) value.textContent = MODES[G.mode].name;
+        else el.modeBtn.innerHTML = '<span class="quick-setting-label">MODE</span><strong class="mode-value">' + MODES[G.mode].name + '</strong><span class="mode-chev">▾</span>';
+    }
     if(el.profileTag) el.profileTag.textContent = G.profile || '—';
+    if(el.profilePanelTag) el.profilePanelTag.textContent = G.profile || '—';
 }
 
 function renderModes(){
@@ -176,6 +182,7 @@ function fillProfiles(){
 export function refreshLobby(){
     fillProfiles();
     if(el.profileTag) el.profileTag.textContent = G.profile;
+    if(el.profilePanelTag) el.profilePanelTag.textContent = G.profile;
     el.lobbyBestScore.textContent = G.best.score || 0;
     el.lobbyBestWave.textContent = G.best.wave || 0;
     el.lobbyCredits.textContent = G.career.credits || 0;

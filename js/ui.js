@@ -1,5 +1,6 @@
 import { G } from './state.js';
-import { camera } from './world.js';
+import { camera, getArenaName } from './world.js';
+import { ARENAS, EXTRACTION, scopeForWeapon } from './config.js';
 import { zombies, pickups } from './zombies.js';
 import { SHOP_ITEMS, ABILITIES, shopOwned } from './config.js';
 import { chooseAbility, buyShopItem } from './progression.js';
@@ -15,7 +16,7 @@ export function initUI(){
     const ids = ['hpFill','hpGhost','hpText','xpFill','lvlText','cashText','weaponName','ammo','killsText',
         'bossBarWrap','bossFill','bossPhase','waveBanner','vignette','dmgFlash','minimap','levelUp','luSub','cards',
         'shop','shopCash','shopList','timerLine','timerText','beaconBarWrap','beaconFill','toasts','upgPanel',
-        'meleeRow','meleeFill'];
+        'meleeRow','meleeFill','arenaName','arenaProgress','arenaObjective'];
     ids.forEach(id => el[id] = document.getElementById(id));
 }
 
@@ -31,10 +32,16 @@ export function toast(msg, cls){
 
 export function setAim(on){
     const show = !!on;
+    const profile = scopeForWeapon(G.curWeapon);
     const ov = document.getElementById('scopeOverlay');
     const ch = document.getElementById('crosshair');
-    if(ov) ov.classList.toggle('hidden', !show);
-    if(ch) ch.classList.toggle('hidden', show);
+    if(ov){
+        ov.classList.toggle('hidden', !show || !profile.overlay);
+        ov.dataset.scope = profile.id;
+        const label = document.getElementById('scopeLabel');
+        if(label) label.textContent = profile.name;
+    }
+    if(ch) ch.classList.toggle('hidden', show && profile.overlay);
 }
 
 function refreshHealth(){
@@ -69,17 +76,19 @@ export function updateHUD(){
         el.meleeRow.classList.toggle('ready', pct >= 1);
     }
     if(G.boss){
+        el.bossBarWrap.style.display = 'block';
         el.bossFill.style.width = Math.max(0, G.boss.hp / G.boss.maxHp * 100) + '%';
         const n = Math.min(5, Math.max(1, G.boss.rage || 1));
         el.bossPhase.textContent = 'PHASE ' + n + ' · ' + BOSS_NAMES[n - 1];
     }
-    el.timerLine.style.display = G.mode === 'time' ? 'block' : 'none';
-    if(G.mode === 'time'){
-        const s = Math.max(0, Math.ceil(G.game.timer));
-        el.timerText.textContent = Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+    el.timerLine.style.display = 'none';
+    if(el.arenaName){
+        el.arenaName.textContent = getArenaName();
+        const arenaIndex = Math.max(0, ARENAS.findIndex(a => a.id === G.game.arena));
+        el.arenaProgress.textContent = G.game.extracting ? 'REACH THE FLARE' : (G.mode === 'extraction' ? ('DISTRICT ' + (arenaIndex + 1) + ' / ' + ARENAS.length + ' · WAVE ' + G.game.wave + '/' + EXTRACTION.waves) : ('WAVE ' + G.game.wave));
+        if(el.arenaObjective) el.arenaObjective.textContent = G.game.extracting ? 'GET TO THE EXTRACTION FLARE' : (G.mode === 'extraction' ? (ARENAS[arenaIndex]?.objective || 'SURVIVE THE DISTRICT') : 'SURVIVE THE DISTRICT');
     }
-    el.beaconBarWrap.style.display = G.mode === 'defense' ? 'block' : 'none';
-    if(G.mode === 'defense') el.beaconFill.style.width = Math.max(0, G.game.beaconHp / G.game.beaconMaxHp * 100) + '%';
+    el.beaconBarWrap.style.display = 'none';
     if(el.upgPanel){
         const upg = [...G.game.perks, ...G.game.bought].map(s => `<span class="upg-chip">${s}</span>`).join('');
         if(upg !== lastUpg){ lastUpg = upg; el.upgPanel.innerHTML = upg; }
@@ -101,14 +110,16 @@ export function updateBanner(dt){
     }
 }
 
-export function bossCutscene(z){
+export function bossCutscene(z, arrival = false){
     const n = Math.min(5, Math.max(1, z.rage));
     const bc = document.getElementById('bossCutscene');
     if(!bc) return;
+    const kicker = bc.querySelector('.bc-kicker');
     const name = document.getElementById('bcName');
     const sub = document.getElementById('bcSub');
+    if(kicker) kicker.textContent = arrival ? 'BOSS ARRIVAL' : 'MUTATION DETECTED';
     if(name) name.textContent = BOSS_NAMES[n - 1];
-    if(sub) sub.textContent = 'PHASE ' + n + ' / 5';
+    if(sub) sub.textContent = arrival ? 'THE SECTOR WARDEN HAS AWAKENED' : ('PHASE ' + n + ' / 5');
     bc.classList.remove('hidden');
     G.shake = Math.max(G.shake, 0.5);
     cutsceneTimer = 1.7;

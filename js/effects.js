@@ -8,6 +8,7 @@ const rings = [];
 const lights = [];
 const sprites = [];
 const decals = [];
+const bursts = [];
 const partGeo = new THREE.BoxGeometry(0.14,0.14,0.14);
 const partMatCache = {};
 function partMat(c){ if(!partMatCache[c]) partMatCache[c] = new THREE.MeshBasicMaterial({ color:c }); return partMatCache[c]; }
@@ -64,6 +65,18 @@ export function spawnSmoke(pos, count=10){
         scene.add(m); particles.push({ m, v, life:0.9+Math.random()*0.5, rise:true });
     }
 }
+export function spawnImpactBurst(pos, color, scale = 1){
+    const glow = new THREE.SpriteMaterial({ map:glowTex, color, transparent:true, opacity:0.8, blending:THREE.AdditiveBlending, depthWrite:false });
+    const sprite = new THREE.Sprite(glow);
+    sprite.position.copy(pos);
+    sprite.scale.setScalar(0.7 * scale);
+    scene.add(sprite);
+    const light = new THREE.PointLight(color, 1.6 * scale, 7 * scale);
+    light.position.copy(pos);
+    scene.add(light);
+    bursts.push({ sprite, light, life:0.22, max:0.22, scale });
+}
+
 export function spawnRing(pos, color, maxR){
     const ring = new THREE.Mesh(
         new THREE.RingGeometry(0.1, 0.4, 24),
@@ -104,6 +117,7 @@ export function clearEffects(){
     [...particles].forEach(p => scene.remove(p.m)); particles.length = 0;
     [...rings].forEach(r => scene.remove(r.mesh)); rings.length = 0;
     [...decals].forEach(d => scene.remove(d.mesh)); decals.length = 0;
+    [...bursts].forEach(b => { scene.remove(b.sprite); scene.remove(b.light); }); bursts.length = 0;
 }
 
 export function updateEffects(dt){
@@ -138,6 +152,14 @@ export function updateEffects(dt){
         r.mesh.scale.set(s, s, s);
         r.mesh.material.opacity = Math.max(0, r.life/0.5*0.8);
         if(r.life <= 0){ scene.remove(r.mesh); rings.splice(i,1); }
+    }
+    for(let i=bursts.length-1;i>=0;i--){
+        const b = bursts[i]; b.life -= dt;
+        const p = Math.max(0, b.life / b.max);
+        b.sprite.material.opacity = p * 0.8;
+        b.sprite.scale.setScalar(b.scale * (0.7 + (1 - p) * 1.2));
+        b.light.intensity = p * 1.6 * b.scale;
+        if(b.life <= 0){ scene.remove(b.sprite); scene.remove(b.light); bursts.splice(i, 1); }
     }
     for(let i=decals.length-1;i>=0;i--){
         const d = decals[i]; d.life -= dt;
