@@ -37,7 +37,7 @@ to buy gear mid-run, and spend career credits on permanent upgrades between runs
 - **Rendering:** **Three.js r128** loaded from a CDN as a global `THREE` (not an import).
 - **Audio:** fully **procedural WebAudio** — zero asset files.
 - **State:** one shared mutable object `G` (`js/state.js`) imported by every module.
-- **Extras:** 8 weapons, 8 enemy types, 5 game modes, mod loader, level editor, day/night cycle, PWA,
+- **Extras:** 8 weapons, 9 enemy types, 5 game modes, mod loader, level editor, static day lighting, PWA,
   **per-user local profiles**, an **intro cutscene**, a **procedurally synthesized soundtrack**, and a
   **single friendly difficulty for everyone** — infinite ammo (no reloads) and simple controls are the
   default for all players (the old Kids Mode toggle was removed and its easy features unified).
@@ -45,7 +45,8 @@ to buy gear mid-run, and spend career credits on permanent upgrades between runs
   bars/inputs, soft dual shadows, on a deep `#1e2330` canvas. The lobby, pause, and game-over screens use
   an **asymmetric bento grid** of varied-size cards (big 2×2 PLAY CTA, 2-row leaderboard, wide
   settings/keys rows) to keep things uncluttered. **minimal HUD** (crosshair, health+XP with a
-  KILLS counter, weapon/∞-ammo, cash chip, minimap) with **toast popups** for events (combo milestones,
+  KILLS counter, weapon/∞-ammo, an **F MELEE cooldown bar**, cash chip, minimap) with **toast popups**
+  for events (combo milestones,
   no grenades) and **popup modals** for pause, level-up, field shop, sandbox, and career shop. Ghost HP
   bar, red damage flash, and a low-HP heartbeat round it out.
 
@@ -105,7 +106,7 @@ Click/`Space`/`Enter` advances early; `Esc` or the **SKIP** button ends it and s
 - **First-boot profile** — instead of silently creating a "SURVIVOR" profile, the game asks you to
   **create your own profile on first launch** (a centered modal, see §9). Everything is saved per profile.
 - **HUD:** a **KILLS** counter sits in the top-left panel under health/XP; the weapon panel shows the
-  weapon name and `∞` ammo.
+  weapon name and `∞` ammo, plus an **F MELEE cooldown bar** (fills up while `F` is recharging).
 - **Field shop:** fully accessible (🛒 SHOP button, pause-menu button, or `B`) with everything listed —
   medkits, grenades, stat upgrades, weapon unlocks, and attachments (Suppressor / Scope).
 
@@ -121,21 +122,34 @@ Click/`Space`/`Enter` advances early; `Esc` or the **SKIP** button ends it and s
   aiming or with recoil recovery. Bullets pierce up to `1 + G.mult.pierce` zombies; **crates are
   destructible** (`damageObstacle`) and block shots.
 - **Attachments (shop unlocks):** **Suppressor** (−40% recoil + quieter shots via `audio.noise`),
-  **Tactical Scope** (deeper 38° aim zoom). (Magazine/reload upgrades were removed with infinite ammo.)
-  All reset at `beginGame`.
+  **Tactical Scope** (a deeper 38° aim zoom; the Sniper always uses a 25° scoped view). **Every**
+  weapon shows a **scope overlay** (circular mask + reticle) while right-click zooming.
+  (Magazine/reload upgrades were removed with infinite ammo.) All reset at `beginGame`.
 - **Recoil & feel:** each shot adds camera recoil that decays; the viewmodel kicks and a muzzle flash
   sprite pops. **Hit-stop** on kills (`G.hitStop`) briefly slows the frame dt to 15% for punch.
-- **Melee:** short-range frontal cone; can break shield-zombie shields (see below).
+- **Melee:** short-range frontal cone (30 base damage, 0.6 s cooldown); can break shield-zombie
+  shields (see below). The viewmodel swings while on cooldown so the hit feels like a stab, and a
+  cooldown bar under the weapon panel shows when `F` is ready again.
 - **Grenades:** arcing physics projectile with fuse; on detonation deals AoE damage (shield-piercing),
   spawns a shockwave ring, particles, light flash, and screen shake.
-- **Zombie types (8):**
+- **Zombie types (9):**
   - `normal` — balanced baseline.
   - `runner` — fast / weak.
-  - `brute` — tank / slow.
-  - `boss` — huge (dedicated **boss model** + health bar), every 5th wave (or every wave in Boss
-    Rush). A real threat: it **charges** the player, **slams** the ground for AoE damage, and
-    **summons minions**, then **enrages** under 30% HP (+30% speed). Fast (2.0) and hits hard (40).
-    It scales +12% HP per wave and never gets shoved around by the horde.
+  - `crawler` — low, scuttling all-fours zombie that **pounces** at melee range (wave 3+).
+  - `brute` — tank / slow, with horns and shoulder pads.
+  - `boss` — huge (dedicated **boss model** + health bar + **phase label**), every 5th wave (or every
+    wave in Boss Rush). Runs through **5 HP-based phases** (100/80/60/40/20% thresholds) — each phase
+    is a **completely new boss form** (`buildBossForm` in `models/boss.js`): Phase 1 **THE ABOMINATION**
+    (armored purple brute, horns, fists), Phase 2 **THE TITAN** (hulking rust brawler, huge fists),
+    Phase 3 **THE OCULUS** (tall crowned caster, giant glowing core), Phase 4 **THE REAPER** (lean
+    lacerator with blade arms and a head crest), Phase 5 **THE COLOSSUS** (enraged endgame with wings,
+    crown, blades, and a pulsing red aura). Abilities unlock as the form changes: Phase 2 adds a
+    **charge**, Phase 3 unlocks the **nova** projectile ring, Phase 4 unlocks an aimed **volley**
+    burst, and Phase 5 enrages (faster, more projectiles, more minions). Speed, attack rate, and
+    projectile counts all scale with phase. Scales **+22% HP per wave** from a **5000 HP** base.
+    On every phase change the game swaps the mesh in place (`swapBossForm`) and plays a **mutation
+    cutscene** overlay (`bossCutscene` in `ui.js`) naming the new form. Animations change per form too —
+    Phase 3+ uses an overhead **smash**, Phase 5 fights with **alternating punches**.
   - `spitter` — keeps range (5–18 m) and fires **acid projectiles** (physics-arc, poison-green).
   - `exploder` — rushes in and **detonates** in a radial AoE when close (8 m radius).
   - `screamer` — periodically **summons** 2 normal zombies nearby (uses its own `summonCd`).
@@ -146,10 +160,11 @@ Click/`Space`/`Enter` advances early; `Esc` or the **SKIP** button ends it and s
   also fixes zombies never reaching melee range), and animate properly: head bobbing and forward leg
   swings while walking, arm flailing + lunge while attacking, and a brief **tumble-sink death
   animation** (corpses) instead of popping out of existence. HP/damage scale with wave number. Heads
-  are tagged `userData.part === 'head'`, so **headshots work**.
+  are tagged `userData.part === 'head'`, so **headshots work**. Zombies always face their movement
+  direction exactly (lean/pose is applied on an inner rig so the yaw never tilts them off-axis).
 - **Waves:** spawn count scales with wave; intermission between waves; **boss wave** every 5th wave.
-  Enemy pool unlocks as waves rise (`pickSpawnType` in `waves.js`): runners wave 3+, brutes wave 4+,
-  spitters wave 4+, exploders/shields wave 5+, screamers wave 6+.
+  Enemy pool unlocks as waves rise (`pickSpawnType` in `waves.js`): runners wave 3+, crawlers wave 3+,
+  brutes wave 4+, spitters wave 4+, exploders/shields wave 5+, screamers wave 6+.
 - **Game modes (`MODES`, lobby select):**
   - **Endless Horde** — survive escalating waves as long as you can.
   - **Time Attack** — 3-minute timer (HUD shows `TIME 3:00`); reaching 0 ends the run with
@@ -166,8 +181,10 @@ Click/`Space`/`Enter` advances early; `Esc` or the **SKIP** button ends it and s
   damage/RoF/HP/speed upgrades, **weapon unlocks (SMG/Shotgun/Rifle/LMG/Sniper/Crossbow/
   Flamethrower)**, and **attachments** (Suppressor / Scope). Owned unlocks render as SOLD via
   `shopOwned`.
-- **Pickups:** zombies randomly drop health crosses and ammo boxes, auto-collected by walking over
-  them. With infinite ammo, **ammo boxes refill your grenades (+2)** instead. Bosses always drop one.
+- **Pickups:** zombies randomly drop health crosses and grenade clusters, auto-collected by walking
+  over them. A grenade pickup gives **+2 grenades** (ammo is infinite, so there are no ammo drops).
+  **Pickups expire after 20 s** (blinking during the last 4 s) so they can't clutter the field.
+  Bosses always drop one.
 - **Kill feedback:** floating **+XP / +cash** text (color-coded `.dmg.xp` / `.dmg.cash`), **blood
   decals** on surfaces, hit-stop, screen shake, and headshot markers.
 - **Career (lobby):** end-of-run score awards 💎 credits (persisted **per profile**). The lobby
@@ -193,7 +210,7 @@ Click/`Space`/`Enter` advances early; `Esc` or the **SKIP** button ends it and s
 ```
 index.html
   └─ js/main.js  (entry; init + animate loop + state machine + window.Voxel API)
-        ├─ world.js        scene / camera / renderer / pointer lock / collisions / day-night / beacon
+        ├─ world.js        scene / camera / renderer / pointer lock / collisions / beacon / static day lighting
         ├─ state.js        G (single source of truth)
         ├─ config.js       data: weapons, perks, zombie types, shop, career, modes
         ├─ storage.js      per-user profile localStorage
@@ -277,21 +294,21 @@ Transitions:
 | `state.js` | `G` shared state. | `G` |
 | `config.js` | Tunable data + perk/shop effect fns. | `WEAPONS, ABILITIES, ZTYPES, SHOP_ITEMS, CAREER_UPGRADES, MODES, effMag, shopOwned` |
 | `storage.js` | Per-user profile localStorage (list, active, per-profile data, legacy migration). | `getProfiles, profileExists, ensureProfile, setActiveProfile, createProfile, deleteProfile, loadProfileData, hydrate(G), persist(G)` |
-| `world.js` | scene/camera/renderer, lights, shadows, arena, pointer lock, collisions, beacon, day/night, map I/O. | `initWorld, applyGfx, scene, camera, renderer, GROUND, nightColor, obstacles, beaconPos, beaconGroup, buildBeacon, showBeacon, requestLock, collidePlayer, damageObstacle, serializeWorld, loadWorld, onResize, updateDayNight` |
-| `models/index.js` | Re-exports the `models/` folder: shared parts + zombie/boss/weapon/pickup builders. | `box, buildZombieMesh, buildBossMesh, buildViewModel, buildPickup` |
+| `world.js` | scene/camera/renderer, lights, shadows, arena, pointer lock, collisions, beacon, static day lighting, map I/O. | `initWorld, applyGfx, scene, camera, renderer, GROUND, obstacles, beaconPos, beaconGroup, buildBeacon, showBeacon, requestLock, collidePlayer, damageObstacle, serializeWorld, loadWorld, onResize` |
+| `models/index.js` | Re-exports the `models/` folder: shared parts + zombie/boss/weapon/pickup builders. | `buildZombieMesh, buildBossForm, buildViewModel, buildPickup` |
 | `models/parts.js` | Shared voxel parts: `box`, `boxMat`, articulated `limb()` (upper+lower+foot), skin/metal textures. | `box, boxMat, limb, fleshTex, metalTex` |
-| `models/zombie.js` | Procedural zombie meshes (body/chest/head/jaw/eyes, per-type extras, articulated limbs, `scale`, head/body part tags). | `buildZombieMesh(type)` |
-| `models/boss.js` | The boss's dedicated mesh (armor, fists, spikes, glowing core). | `buildBossMesh()` |
+| `models/zombie.js` | Procedural zombie meshes (body/chest/head/jaw/eyes, per-type extras, articulated limbs, `scale`, head/body part tags). Humanoids carry their lean on an inner pose rig so the outer group is pure yaw. | `buildZombieMesh(type)` |
+| `models/boss.js` | Five distinct boss forms — ABOMINATION / TITAN / OCULUS / REAPER / COLOSSUS (Form 5 carries a pulsing red aura) — each built from scratch with `buildBossForm(form)`. `buildBossMesh()` is kept as a Form 1 alias. | `buildBossForm(form), buildBossMesh()` |
 | `models/weapon.js` | First-person gun viewmodel (metal texture, scope, flamer tank, muzzle point). | `buildViewModel(weaponId)` |
 | `models/pickup.js` | Pickup meshes (health / grenade). | `buildPickup(type)` |
 | `textures.js` | Procedural CanvasTexture generators. | `crateTexture, groundTexture(a), rockTexture, fleshTexture, metalTexture, glowTexture, skyTexture` |
 | `audio.js` | Procedural SFX engine. | `audio` (init/setVolume/shoot/hit/noise/buy/shieldBreak/summon/heartbeat/gameOverSting/whoosh/thud/...) |
 | `music.js` | Procedural BGM (128 BPM dark techno loop). | `music` (start/stop/setIntensity), `combatIntensity()` |
 | `effects.js` | Visual helpers. | `spawnBloodDecal, spawnTracer, spawnMuzzleLight, spawnMuzzleSprite, spawnParticles(pos,color,count,opts), spawnSmoke, spawnRing, spawnDamageNumber(world, text, color, cls), showHitmarker, tickHitmarker, clearEffects, updateEffects` |
-| `weapons.js` | Combat + viewmodel + grenades + crate damage. | `initWeapons, cycleWeapon, selectWeapon, tryShoot, startReload, meleeAttack, throwGrenade, updateWeapons` |
-| `zombies.js` | AI (incl. boss charge/slam/summon/enrage) + projectiles + pickups + corpses. | `zombies, pickups, corpses, spawnZombie(type, at), damageZombie(z, dmg, point, isHead, shieldPierce), spawnPickup, updateZombies, updatePickups` |
+| `weapons.js` | Combat + viewmodel + grenades + crate damage. | `initWeapons, cycleWeapon, selectWeapon, tryShoot, meleeAttack, throwGrenade, updateWeapons` |
+| `zombies.js` | AI (incl. boss charge/slam/summon/nova/volley + 5 HP-based phases that swap to entirely new forms via `swapBossForm` + trigger the `bossCutscene` mutation overlay) + projectiles + pickups (expire after 20 s) + corpses. | `zombies, pickups, corpses, spawnZombie(type, at), damageZombie(z, dmg, point, isHead, shieldPierce), spawnPickup, updateZombies, updatePickups` |
 | `waves.js` | Spawning / boss waves / modes. | `startWave, updateWaves` (+ internal `pickSpawnType`) |
-| `ui.js` | HUD/minimap/overlays (minimal HUD, toasts, ghost HP, damage flash, popup modals). | `initUI, updateHUD, toast, showBanner, updateBanner, setVignette, drawMinimap, openLevelUp, hideLevelUp, renderShop, openShopUI, closeShopUI` |
+| `ui.js` | HUD/minimap/overlays (minimal HUD, toasts, ghost HP, damage flash, popup modals, boss mutation cutscene). | `initUI, updateHUD, toast, showBanner, updateBanner, bossCutscene, setVignette, drawMinimap, openLevelUp, hideLevelUp, renderShop, openShopUI, closeShopUI` |
 | `progression.js` | XP/perks/shop/career. | `gainXp, chooseAbility, buyShopItem, buyCareerUpgrade, applyCareerEffects` |
 | `lobby.js` | Menu, profiles, settings, mode/gfx selects, leaderboard, map I/O, first-boot profile modal. | `initLobby, refreshLobby` |
 | `intro.js` | 2D cinematic canvas cutscene (4 auto chapters, letterbox/grain/skip, per-chapter SFX). | `playIntro(onDone)` |
@@ -306,14 +323,14 @@ All balance lives in `config.js` so game logic rarely changes:
   `id` doubles as the select key (Digit1-8) and the `ownedWeapons` index.
 - **`ABILITIES`** — 8 perks; each `apply(G)` mutates `G.mult` / `G.player`.
   (Quick Hands + Drum Mag were removed — pointless with infinite ammo.)
-- **`ZTYPES`** — 8 zombie types: `{hp,speed,scale,color,dmg,score,cash,groan}` plus optional flags
+- **`ZTYPES`** — 9 zombie types: `{hp,speed,scale,color,dmg,score,cash,groan}` plus optional flags
   `ranged` (spitter), `boom` (exploder), `summon` (screamer), `shielded` (shield).
 - **`SHOP_ITEMS`** — in-run purchases; each `apply(G)` mutates state. `once:true` items carry a
   `key` (`w1`..`w7` for weapon unlocks, or an attachment key `mag`/`sup`/`scope`) and are checked
   with **`shopOwned(it, G)`** to render as owned/sold.
 - **`CAREER_UPGRADES`** — persistent upgrades with `max` level, `cost(level)`, and `effect(G)`
   applied at `beginGame` per owned level.
-- **`MODES`** — the 5 game modes: `{name, desc}`. The lobby `<select>` writes `G.mode`.
+- **`MODES`** — the 5 game modes: `{ico, name, desc}`. A **mode picker popup** (lobby button → card grid) writes `G.mode`.
 - **`effMag(w, G)`** — effective magazine = `w.mag + G.mult.mag + G.attach.mag`. **Legacy/no-op**
   with infinite ammo (kept exported for API compatibility); magazine size never changes.
 
@@ -328,10 +345,8 @@ never mutates the config.
   `glowTexture` (additive muzzle sprite), `skyTexture`.
 - **World:** textured ground (instanced tiles), **destructible crates** (bullet blockers with
   `userData.radius` + collision), trees, rocks. Directional light casts shadows (PCFSoft); ambient +
-  hemisphere fill. Gradient sky via `skyTexture()`. Fog for depth.
-- **Day/night cycle (`world.updateDayNight`):** a module-level `_dayFog` color is recycled (no per-frame
-  allocations) as sun position/angle, directional+ambient+hemisphere intensity, and fog color lerp
-  between day and `nightColor`.
+  hemisphere fill. Gradient sky via `skyTexture()`. Fog for depth. Lighting is **fixed daytime**
+  (the old day/night cycle was removed — sun, ambient, and hemisphere intensities stay constant).
 - **Beacon (Defense mode):** `buildBeacon()` creates the protected structure at `beaconPos`;
   `showBeacon(on)` shows/hides it and the HUD bar.
 - **Models (`js/models/`):** all builders live in a dedicated folder — `zombie.js`'s `buildZombieMesh`
@@ -340,8 +355,11 @@ never mutates the config.
   parts are tagged `userData.part` (`head`, `body`, `chest`) so **headshots** hit the right part;
   `hitMeshes` carry `userData.zombie`. Zombies wear the `fleshTexture` skin with **glowing red eye
   cubes** (emissive), a chest skin panel, jaws, and per-type extras (brute pads, shield, screaming maw,
-  exploder core, spitter snout), and apply their `ZTYPES.scale`. `boss.js`'s `buildBossMesh` is a
-  dedicated, larger boss: purple armor, fists, back spikes, and a **glowing core**. Shield zombies get
+  exploder core, spitter snout), and apply their `ZTYPES.scale`. `boss.js`'s `buildBossForm(form)`
+  returns **one of five distinct boss forms** (ABOMINATION / TITAN / OCULUS / REAPER / COLOSSUS).
+  Form 5 also carries a `userData.aura` pulsing red box. On a phase change `zombies.js` calls
+  `swapBossForm(z)` to rebuild the boss mesh in place (keeping position/rotation/walk phase) and
+  re-links `z.hit`, plus a `bossCutscene` mutation overlay. Shield zombies get
   a metal `userData.shieldMesh` (hidden when `shieldHp` breaks). `weapon.js`'s `buildViewModel` builds
   the first-person gun attached to the **camera** (metal texture, sniper scope, flamer tank); recoil
   uses `group.userData.basePos`; firing spawns an additive **muzzle sprite** (`glowTexture`). Killed
@@ -491,8 +509,16 @@ No test framework is set up (intentionally minimal). Changes are validated with:
   persistence across reloads; legacy migration into `SURVIVOR`; intro cutscene + skip; BGM starting on
   PLAY and heating up as waves ramp; **∞ ammo** (no reload) + KILLS counter in the HUD; zombies
   reaching melee range and dealing damage (ghost bar + red flash + heartbeat under 30%); **boss AI**
-  (charge / slam AoE / summon minions / enrage at 30% HP, boss HP bar); headshots registering; shop
+  (charge / slam AoE / summon minions / 5 HP-based phases, boss HP bar + **phase label**); the boss
+  **mutating into a new form each phase** (ABOMINATION → TITAN → OCULUS → REAPER → COLOSSUS) with a
+  **mutation cutscene** overlay + shake, its animations switching per form (overhead smash, alternating
+  punches), and the red aura pulsing in Phase 5; **weapon switching in the field shows the right viewmodel**
+  (fix: `applySwitch` calls `rebuildViewModel()`); the **F MELEE cooldown bar** filling up after a
+  swing; **static day lighting** (no more day/night cycle); headshots registering; shop
   categories + buy sound; muzzle sprite; explosion smoke; shield-break sound; **toast popups**
+- **Service worker:** `sw.js` caches every asset (cache-first) under a versioned cache name. After any
+  code change, **bump the `CACHE` version** (e.g. `voxel-survivor-v14`) so players stop getting stale
+  files — this was the cause of "boss phases / new models / weapon switching not appearing".
   (combo / no-grenades); and **popup modals** (pause/level-up/shop/sandbox/career).
 
 ## 14. Future vision / roadmap
@@ -528,7 +554,7 @@ No test framework is set up (intentionally minimal). Changes are validated with:
 - ✅ New weapons: LMG, sniper, crossbow, flamethrower.
 - ✅ Game modes: **Endless Horde**, **Time Attack**, **Boss Rush**, **Wave Defense** (beacon),
   **Sandbox** (god mode + spawn menu).
-- ✅ Day/night cycle, destructible cover.
+- ✅ Static day lighting (the day/night cycle was removed for cleaner visibility), destructible cover.
 - ✅ Local **leaderboard** (top runs) and **stats screen** (accuracy, headshots, best wave).
 - ▶ Environmental hazards: weather, traps, lureable zombies.
 

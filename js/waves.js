@@ -58,6 +58,7 @@ function pickSpawnType(){
     if(w >= 5 && r < 0.42) return 'exploder';
     if(w >= 4 && r < 0.50) return 'brute';
     if(w >= 3 && r < 0.62) return 'runner';
+    if(w >= 3 && r < 0.72) return 'crawler';
     return 'normal';
 }
 

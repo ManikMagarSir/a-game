@@ -3,9 +3,7 @@ import { skyTexture, groundTexture, crateTexture, rockTexture } from './textures
 
 export let scene, camera, renderer;
 export const GROUND = 240;
-let sun, ambientLight, hemiLight, dayTime = 0.38;
-export const nightColor = new THREE.Color(0x0a1420);
-const _dayFog = new THREE.Color(0x121a22);
+let sun;
 
 export function initWorld(){
     scene = new THREE.Scene();
@@ -35,9 +33,6 @@ export function initWorld(){
     sun.shadow.camera.near=1; sun.shadow.camera.far=260;
     sun.shadow.bias = -0.0004;
     scene.add(sun);
-
-    ambientLight = scene.children.find(c => c.isAmbientLight);
-    hemiLight = scene.children.find(c => c.isHemisphereLight);
 
     buildWorld();
     buildBeacon();
@@ -217,15 +212,4 @@ export function onResize(){
     camera.aspect = innerWidth/innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
-}
-
-export function updateDayNight(dt){
-    dayTime += dt * 0.008;
-    if(dayTime >= 1) dayTime -= 1;
-    const light = Math.sin(dayTime * Math.PI * 2) * 0.5 + 0.5;
-    sun.intensity = 0.12 + light * 0.85;
-    ambientLight.intensity = 0.22 + light * 0.45;
-    hemiLight.intensity = 0.15 + light * 0.35;
-    scene.fog.color.copy(nightColor).lerp(_dayFog, light);
-    sun.position.set(50, 20 + light*90, 35);
 }

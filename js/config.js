@@ -26,11 +26,12 @@ export const ZTYPES = {
     normal: { hp:60,  speed:1.7,  scale:1.0,  color:0x4a7a3a, dmg:8,  score:10,  cash:8,   groan:[60,90] },
     runner: { hp:32,  speed:3.4,  scale:0.85, color:0xb6a23a, dmg:6,  score:14,  cash:12,  groan:[90,130] },
     brute:  { hp:180, speed:1.05, scale:1.7,  color:0x7a2a2a, dmg:18, score:26,  cash:24,  groan:[45,70] },
-    boss:   { hp:1600, speed:2.0, scale:2.8,  color:0x7a2a9a, dmg:40, score:200, cash:220, groan:[40,60] },
+    boss:   { hp:5000, speed:2.0, scale:2.8,  color:0x7a2a9a, dmg:40, score:200, cash:220, groan:[40,60] },
     spitter:{ hp:45,  speed:2.2,  scale:0.95, color:0x3a9a5a, dmg:10, score:18,  cash:16,  groan:[70,110], ranged:true },
     exploder:{ hp:50, speed:2.6,  scale:0.9,  color:0x9a4a2a, dmg:26, score:20,  cash:18,  groan:[50,80], boom:true },
     screamer:{ hp:70, speed:1.5,  scale:1.1,  color:0x7a5a9a, dmg:5,  score:30,  cash:26,  groan:[120,180], summon:true },
     shield: { hp:220, speed:1.0,  scale:1.5,  color:0x5a6a7a, dmg:14, score:32,  cash:28,  groan:[40,60], shielded:true },
+    crawler:{ hp:40,  speed:2.9,  scale:1.0,  color:0x6a8a4a, dmg:6,  score:16,  cash:13,  groan:[70,110] },
 };
 
 export const SHOP_ITEMS = [
@@ -48,7 +49,7 @@ export const SHOP_ITEMS = [
     { id:'unlock6', name:'Unlock Crossbow',ico:'🏹',desc:'Add Crossbow to loadout',cost:550, once:true, key:'w6', apply:G=>{ G.ownedWeapons[6]=true; } },
     { id:'unlock7', name:'Unlock Flamethrower',ico:'🔥',desc:'Add Flamethrower to loadout', cost:800, once:true, key:'w7', apply:G=>{ G.ownedWeapons[7]=true; } },
     { id:'attSup',  name:'Suppressor',    ico:'🔇', desc:'-40% recoil, quieter shots', cost:400, once:true, key:'sup', apply:G=>{ G.attach.sup = 1; } },
-    { id:'attScope',name:'Tactical Scope',ico:'🔭', desc:'Deeper aim zoom',        cost:450, once:true, key:'scope', apply:G=>{ G.attach.scope = 1; } },
+    { id:'attScope',name:'Tactical Scope',ico:'🔭', desc:'Deeper aim zoom', cost:450, once:true, key:'scope', apply:G=>{ G.attach.scope = 1; } },
 ];
 
 export function shopOwned(it, G){
@@ -65,9 +66,9 @@ export const CAREER_UPGRADES = [
 ];
 
 export const MODES = {
-    endless:  { name:'ENDLESS HORDE',  desc:'Survive escalating waves as long as you can.' },
-    time:     { name:'TIME ATTACK',    desc:'Survive 3 minutes. Score big before time runs out.' },
-    bossrush: { name:'BOSS RUSH',      desc:'A boss every wave. How many can you down?' },
-    defense:  { name:'WAVE DEFENSE',   desc:'Protect the beacon from the horde.' },
-    sandbox:  { name:'SANDBOX',        desc:'God mode + spawn menu (T). No challenge, all chaos.' },
+    endless:  { ico:'♾️', name:'ENDLESS HORDE',  desc:'Survive escalating waves as long as you can.' },
+    time:     { ico:'⏱️', name:'TIME ATTACK',    desc:'Survive 3 minutes. Score big before time runs out.' },
+    bossrush: { ico:'👹', name:'BOSS RUSH',      desc:'A boss every wave. How many can you down?' },
+    defense:  { ico:'🛡️', name:'WAVE DEFENSE',   desc:'Protect the beacon from the horde.' },
+    sandbox:  { ico:'🧪', name:'SANDBOX',        desc:'God mode + spawn menu (T). No challenge, all chaos.' },
 };

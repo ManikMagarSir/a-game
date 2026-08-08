@@ -1,5 +1,5 @@
 import { G } from './state.js';
-import { CAREER_UPGRADES } from './config.js';
+import { CAREER_UPGRADES, MODES } from './config.js';
 import { buyCareerUpgrade } from './progression.js';
 import { audio } from './audio.js';
 import { persist, getProfiles, createProfile, deleteProfile, hydrate, setActiveProfile } from './storage.js';
@@ -15,7 +15,10 @@ export function initLobby(beginCb){
         sensVal: document.getElementById('sensVal'),
         volVal: document.getElementById('volVal'),
         gfxSelect: document.getElementById('gfxSelect'),
-        modeSelect: document.getElementById('modeSelect'),
+        modeBtn: document.getElementById('modeBtn'),
+        modePick: document.getElementById('modePick'),
+        modePickClose: document.getElementById('modePickClose'),
+        modeList: document.getElementById('modeList'),
         profileSelect: document.getElementById('profileSelect'),
         profileName: document.getElementById('profileName'),
         profileAdd: document.getElementById('profileAdd'),
@@ -79,7 +82,8 @@ export function initLobby(beginCb){
         applyGfx();
         persist(G);
     };
-    el.modeSelect.onchange = () => { G.mode = el.modeSelect.value; };
+    el.modeBtn.onclick = () => { renderModes(); el.modePick.classList.remove('hidden'); audio.click(); };
+    el.modePickClose.onclick = () => { el.modePick.classList.add('hidden'); audio.click(); };
 
     el.careerOpen.onclick = () => { el.careerShop.classList.remove('hidden'); renderCareer(); };
     el.careerClose.onclick = () => el.careerShop.classList.add('hidden');
@@ -136,8 +140,27 @@ function syncControls(){
     el.sensVal.textContent = (+G.settings.sensitivity).toFixed(1);
     el.volVal.textContent = (+G.settings.volume).toFixed(2);
     el.gfxSelect.value = G.settings.gfx || 'medium';
-    el.modeSelect.value = G.mode || 'endless';
+    if(el.modeBtn && MODES[G.mode]) el.modeBtn.innerHTML = MODES[G.mode].name + ' <span class="mode-chev">▾</span>';
     if(el.profileTag) el.profileTag.textContent = G.profile || '—';
+}
+
+function renderModes(){
+    el.modeList.innerHTML = '';
+    Object.entries(MODES).forEach(([key, m]) => {
+        const div = document.createElement('div');
+        div.className = 'mode-card' + (key === G.mode ? ' selected' : '');
+        div.innerHTML = `<div class="mode-ico">${m.ico}</div>
+            <div class="mode-name">${m.name}</div>
+            <div class="mode-desc">${m.desc}</div>
+            <div class="mode-state">${key === G.mode ? 'SELECTED' : 'CLICK TO SELECT'}</div>`;
+        div.onclick = () => {
+            if(key !== G.mode){ G.mode = key; persist(G); }
+            syncControls();
+            el.modePick.classList.add('hidden');
+            audio.click();
+        };
+        el.modeList.appendChild(div);
+    });
 }
 
 function fillProfiles(){

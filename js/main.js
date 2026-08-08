@@ -1,10 +1,10 @@
 import { G } from './state.js';
-import { initWorld, scene, camera, renderer, GROUND, requestLock, collidePlayer, showBeacon, updateDayNight } from './world.js';
+import { initWorld, scene, camera, renderer, GROUND, requestLock, collidePlayer, showBeacon } from './world.js';
 import { initUI, updateHUD, updateBanner, setVignette, drawMinimap, openShopUI, closeShopUI } from './ui.js';
 import { updateEffects, tickHitmarker, clearEffects } from './effects.js';
 import { audio } from './audio.js';
 import { initWeapons, updateWeapons, tryShoot } from './weapons.js';
-import { zombies, pickups, corpses, updateZombies, updatePickups, spawnZombie, damageZombie } from './zombies.js';
+import { zombies, pickups, corpses, updateZombies, updatePickups, spawnZombie, damageZombie, clearProjectiles } from './zombies.js';
 import { updateWaves } from './waves.js';
 import { applyCareerEffects } from './progression.js';
 import { initLobby, refreshLobby } from './lobby.js';
@@ -32,6 +32,7 @@ function startRun(){
     zombies.forEach(z => scene.remove(z.group)); zombies.length = 0;
     pickups.forEach(p => scene.remove(p.mesh)); pickups.length = 0;
     corpses.forEach(c => scene.remove(c.group)); corpses.length = 0;
+    clearProjectiles();
     clearEffects();
     G.boss = null; document.getElementById('bossBarWrap').style.display = 'none';
 
@@ -42,6 +43,7 @@ function startRun(){
     G.hitStop = 0;
     G.weapons.forEach(w => w.ammo = w.mag);
     G.curWeapon = 0; G.weaponReloading = false; G.weaponTimer = 0; G.meleeCd = 0;
+    initWeapons();
     G.firing = false; G.aiming = false; G.recoil.p = 0; G.recoil.y = 0; G.yaw = 0; G.pitch = 0; G.shake = 0;
     G.game.score = 0; G.game.kills = 0; G.game.wave = 0; G.game.xp = 0; G.game.level = 1; G.game.xpToNext = 50;
     G.game.waveActive = false; G.game.toSpawn = 0; G.game.intermission = 3; G.game.combo = 0; G.game.comboTimer = 0; G.game.cash = 0;
@@ -192,7 +194,6 @@ function animate(){
         if(G.shake > 0) G.shake = Math.max(0, G.shake - dt*2.5);
     }
     updateEffects(dt);
-    updateDayNight(dt);
     music.setIntensity(G.state === 'playing' ? combatIntensity() : 0.2);
     renderer.render(scene, camera);
 }
@@ -203,7 +204,7 @@ function init(){
     initUI();
     initWeapons();
     initInput({ openShop, closeShop, openSandbox, closeSandbox, onLockChange });
-    initLobby(beginGame, showMenu);
+    initLobby(beginGame);
     G._onDeath = gameOver;
 
     window.Voxel = {
@@ -223,7 +224,7 @@ function init(){
     document.getElementById('shopBtn').onclick = openShop;
     document.getElementById('pauseShopBtn').onclick = openShop;
     document.getElementById('sandboxClose').onclick = closeSandbox;
-    ['normal','runner','brute','spitter','exploder','screamer','shield','boss'].forEach(t => {
+    ['normal','runner','crawler','brute','spitter','exploder','screamer','shield','boss'].forEach(t => {
         document.getElementById('spawn' + t) && (document.getElementById('spawn' + t).onclick = () => spawnSandbox(t));
     });
 

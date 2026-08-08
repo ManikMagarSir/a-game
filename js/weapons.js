@@ -1,16 +1,20 @@
 import { G } from './state.js';
 import { scene, camera, obstacles as worldObstacles, damageObstacle } from './world.js';
-import { effMag } from './config.js';
 import * as FX from './effects.js';
 import { audio } from './audio.js';
 import { buildViewModel } from './models/index.js';
 import { damageZombie, zombies as zombieList } from './zombies.js';
-import { updateHUD, toast } from './ui.js';
+import { updateHUD, toast, setAim } from './ui.js';
 
 let vm = null, vmMuzzle = null, vmKick = 0, muzzleTimer = 0;
+let switchCd = 0, switchAnim = 1, meleeT = 0;
+const SWITCH_CD = 0.35, SWITCH_ANIM = 0.22, MELEE_ANIM = 0.26;
 const grenades = [];
 
-export function initWeapons(){ rebuildViewModel(); }
+export function initWeapons(){
+    switchCd = 0; switchAnim = 1; meleeT = 0; vmKick = 0; muzzleTimer = 0;
+    rebuildViewModel();
+}
 function rebuildViewModel(){
     if(vm && vm.group.parent) camera.remove(vm.group);
     vm = buildViewModel(G.weapons[G.curWeapon].id);
@@ -18,29 +22,34 @@ function rebuildViewModel(){
     vmMuzzle = vm.muzzle;
 }
 
+function applySwitch(i){
+    G.curWeapon = i;
+    G.weaponReloading = false;
+    G.weaponTimer = 0;
+    switchCd = SWITCH_CD;
+    switchAnim = 0;
+    rebuildViewModel();
+    setAim(G.aiming);
+    updateHUD();
+}
+
 export function cycleWeapon(dir){
-    if(G.state !== 'playing') return;
+    if(G.state !== 'playing' || switchCd > 0) return;
     let i = G.curWeapon;
     for(let n=0;n<G.weapons.length;n++){
         i = (i + dir + G.weapons.length) % G.weapons.length;
         if(G.ownedWeapons[i]) break;
     }
-    G.curWeapon = i;
-    G.weaponReloading = false;
-    buildViewModel();
-    updateHUD();
+    if(i !== G.curWeapon) applySwitch(i);
 }
 
 export function selectWeapon(i){
-    if(G.state !== 'playing' || !G.ownedWeapons[i] || G.curWeapon === i) return;
-    G.curWeapon = i;
-    G.weaponReloading = false;
-    buildViewModel();
-    updateHUD();
+    if(G.state !== 'playing' || !G.ownedWeapons[i] || G.curWeapon === i || switchCd > 0) return;
+    applySwitch(i);
 }
 
 export function tryShoot(){
-    if(G.state !== 'playing' || G.weaponReloading || G.weaponTimer > 0) return;
+    if(G.state !== 'playing' || G.weaponReloading || switchAnim < 1 || G.weaponTimer > 0) return;
     const w = G.weapons[G.curWeapon];
     G.weaponTimer = w.cd * G.mult.fireRate;
 
@@ -98,25 +107,21 @@ export function tryShoot(){
     updateHUD();
 }
 
-export function startReload(){
-    const w = G.weapons[G.curWeapon];
-    if(G.weaponReloading || w.ammo >= effMag(w, G)) return;
-    G.weaponReloading = true; G.weaponReloadTimer = w.reload * G.mult.reload;
-    toast('RELOADING...', 'reload');
-}
-
 export function meleeAttack(){
     if(G.state !== 'playing' || G.meleeCd > 0) return;
-    G.meleeCd = 0.45;
+    G.meleeCd = 0.6;
+    meleeT = MELEE_ANIM;
+    vmKick = Math.min(0.5, vmKick + 0.2);
     const origin = camera.position.clone();
     const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+    const dmg = 30*G.mult.damage;
     for(const z of zombieList){
         const to = z.group.position.clone().setY(1.2).sub(origin);
         if(to.length() > 3.0) continue;
-        if(dir.dot(to.normalize()) > 0.5) damageZombie(z, 70*G.mult.damage, z.group.position.clone().setY(1.3), false, true);
+        if(dir.dot(to.normalize()) > 0.5) damageZombie(z, dmg, z.group.position.clone().setY(1.3), false, true);
     }
-    if(G.boss){ const to = G.boss.group.position.clone().setY(1.4).sub(origin); if(to.length()<4 && dir.dot(to.normalize())>0.3) damageZombie(G.boss, 70*G.mult.damage, G.boss.group.position.clone().setY(1.6), false, true); }
-    G.shake = Math.max(G.shake, 0.15);
+    if(G.boss){ const to = G.boss.group.position.clone().setY(1.4).sub(origin); if(to.length()<4 && dir.dot(to.normalize())>0.3) damageZombie(G.boss, dmg, G.boss.group.position.clone().setY(1.6), false, true); }
+    G.shake = Math.max(G.shake, 0.18);
     audio.tone(180, 0.12, 'square', 0.05);
 }
 
@@ -149,12 +154,11 @@ function explode(pos, radius, dmg){
 }
 
 export function updateWeapons(dt){
-    if(G.weaponReloading){
-        G.weaponReloadTimer -= dt;
-        if(G.weaponReloadTimer <= 0){ G.weaponReloading = false; G.weapons[G.curWeapon].ammo = effMag(G.weapons[G.curWeapon], G); updateHUD(); }
-    }
     if(G.weaponTimer > 0) G.weaponTimer -= dt;
     if(G.meleeCd > 0) G.meleeCd -= dt;
+    if(switchCd > 0) switchCd -= dt;
+    if(meleeT > 0) meleeT -= dt;
+    if(switchAnim < 1) switchAnim = Math.min(1, switchAnim + dt / SWITCH_ANIM);
 
     G.recoil.p = lerp(G.recoil.p, 0, dt*9);
     G.recoil.y = lerp(G.recoil.y, 0, dt*9);
@@ -162,8 +166,18 @@ export function updateWeapons(dt){
     if(vm){
         vmKick = lerp(vmKick, 0, dt*10);
         const bp = vm.group.userData.basePos, br = vm.group.userData.baseRot;
-        vm.group.position.set(bp.x, bp.y + vmKick*0.5, bp.z + vmKick);
-        vm.group.rotation.set(br.x - vmKick*0.6, br.y, br.z);
+        let ox = 0, oy = 0, oz = 0, orx = 0;
+        if(meleeT > 0){
+            const p = 1 - meleeT / MELEE_ANIM;
+            const sw = Math.sin(p * Math.PI);
+            oz -= sw * 0.34; oy -= sw * 0.05; orx -= sw * 0.9;
+        }
+        if(switchAnim < 1){
+            const dip = Math.sin(switchAnim * Math.PI);
+            oy -= dip * 0.2; orx += dip * 0.45;
+        }
+        vm.group.position.set(bp.x + ox, bp.y + oy + vmKick*0.5, bp.z + oz + vmKick);
+        vm.group.rotation.set(br.x + orx - vmKick*0.6, br.y, br.z);
     }
     if(muzzleTimer > 0){ muzzleTimer -= dt; if(muzzleTimer <= 0 && vmMuzzle) vmMuzzle.material.opacity = 0; }
 

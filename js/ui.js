@@ -7,12 +7,15 @@ import { audio } from './audio.js';
 
 let el = {};
 let bannerTimer = 0;
+let cutsceneTimer = 0;
+const BOSS_NAMES = ['ABOMINATION','TITAN','OCULUS','REAPER','COLOSSUS'];
 let lastHp = 100, flashHp = 100, flashUntil = 0, ghostT = null, lastBeat = 0, lastUpg = '';
 
 export function initUI(){
     const ids = ['hpFill','hpGhost','hpText','xpFill','lvlText','cashText','weaponName','ammo','killsText',
-        'bossBarWrap','bossFill','waveBanner','vignette','dmgFlash','minimap','levelUp','luSub','cards',
-        'shop','shopCash','shopList','timerLine','timerText','beaconBarWrap','beaconFill','toasts','upgPanel'];
+        'bossBarWrap','bossFill','bossPhase','waveBanner','vignette','dmgFlash','minimap','levelUp','luSub','cards',
+        'shop','shopCash','shopList','timerLine','timerText','beaconBarWrap','beaconFill','toasts','upgPanel',
+        'meleeRow','meleeFill'];
     ids.forEach(id => el[id] = document.getElementById(id));
 }
 
@@ -24,6 +27,14 @@ export function toast(msg, cls){
     el.toasts.appendChild(t);
     requestAnimationFrame(() => t.classList.add('show'));
     setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2000);
+}
+
+export function setAim(on){
+    const show = !!on;
+    const ov = document.getElementById('scopeOverlay');
+    const ch = document.getElementById('crosshair');
+    if(ov) ov.classList.toggle('hidden', !show);
+    if(ch) ch.classList.toggle('hidden', show);
 }
 
 function refreshHealth(){
@@ -51,7 +62,17 @@ export function updateHUD(){
     el.weaponName.textContent = w.name;
     el.ammo.innerHTML = '∞';
     el.killsText.textContent = G.game.kills;
-    if(G.boss) el.bossFill.style.width = Math.max(0, G.boss.hp / G.boss.maxHp * 100) + '%';
+    if(G.meleeCd !== undefined && el.meleeFill){
+        const MELEE_CD = 0.6;
+        const pct = Math.max(0, 1 - G.meleeCd / MELEE_CD);
+        el.meleeFill.style.width = (pct * 100) + '%';
+        el.meleeRow.classList.toggle('ready', pct >= 1);
+    }
+    if(G.boss){
+        el.bossFill.style.width = Math.max(0, G.boss.hp / G.boss.maxHp * 100) + '%';
+        const n = Math.min(5, Math.max(1, G.boss.rage || 1));
+        el.bossPhase.textContent = 'PHASE ' + n + ' · ' + BOSS_NAMES[n - 1];
+    }
     el.timerLine.style.display = G.mode === 'time' ? 'block' : 'none';
     if(G.mode === 'time'){
         const s = Math.max(0, Math.ceil(G.game.timer));
@@ -66,7 +87,33 @@ export function updateHUD(){
 }
 
 export function showBanner(text){ el.waveBanner.textContent = text; el.waveBanner.style.opacity = 1; bannerTimer = 2; }
-export function updateBanner(dt){ if(bannerTimer > 0){ bannerTimer -= dt; if(bannerTimer <= 0) el.waveBanner.style.opacity = 0; } }
+export function updateBanner(dt){
+    if(bannerTimer > 0){
+        bannerTimer -= dt;
+        if(bannerTimer <= 0) el.waveBanner.style.opacity = 0;
+    }
+    if(cutsceneTimer > 0){
+        cutsceneTimer -= dt;
+        if(cutsceneTimer <= 0){
+            const bc = document.getElementById('bossCutscene');
+            if(bc) bc.classList.add('hidden');
+        }
+    }
+}
+
+export function bossCutscene(z){
+    const n = Math.min(5, Math.max(1, z.rage));
+    const bc = document.getElementById('bossCutscene');
+    if(!bc) return;
+    const name = document.getElementById('bcName');
+    const sub = document.getElementById('bcSub');
+    if(name) name.textContent = BOSS_NAMES[n - 1];
+    if(sub) sub.textContent = 'PHASE ' + n + ' / 5';
+    bc.classList.remove('hidden');
+    G.shake = Math.max(G.shake, 0.5);
+    cutsceneTimer = 1.7;
+    audio.summon();
+}
 
 export function setVignette(){
     refreshHealth();

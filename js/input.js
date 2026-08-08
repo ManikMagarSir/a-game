@@ -1,6 +1,7 @@
 import { G } from './state.js';
 import { camera, renderer, requestLock } from './world.js';
 import { tryShoot, meleeAttack, throwGrenade, cycleWeapon, selectWeapon } from './weapons.js';
+import { setAim } from './ui.js';
 
 function rendererDom(){ return renderer ? renderer.domElement : null; }
 
@@ -33,11 +34,11 @@ export function initInput(handlers){
         if(G.state !== 'playing') return;
         if(document.pointerLockElement !== rendererDom()){ requestLock(); return; }
         if(e.button === 0){ G.firing = true; if(!G.weapons[G.curWeapon].auto) tryShoot(); }
-        else if(e.button === 2){ G.aiming = true; camera.fov = G.curWeapon === 5 ? 25 : (G.attach.scope ? 38 : 55); camera.updateProjectionMatrix(); document.getElementById('crosshair').classList.add('aim'); }
+        else if(e.button === 2){ G.aiming = true; camera.fov = G.curWeapon === 5 ? 25 : (G.attach.scope ? 38 : 55); camera.updateProjectionMatrix(); document.getElementById('crosshair').classList.add('aim'); setAim(true); }
     });
     addEventListener('mouseup', e => {
         if(e.button === 0) G.firing = false;
-        else if(e.button === 2){ G.aiming = false; camera.fov = 75; camera.updateProjectionMatrix(); document.getElementById('crosshair').classList.remove('aim'); }
+        else if(e.button === 2){ G.aiming = false; camera.fov = 75; camera.updateProjectionMatrix(); document.getElementById('crosshair').classList.remove('aim'); setAim(false); }
     });
     addEventListener('contextmenu', e => e.preventDefault());
     addEventListener('wheel', e => { if(G.state === 'playing') cycleWeapon(e.deltaY > 0 ? 1 : -1); });
